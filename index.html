@@ -228,7 +228,7 @@ button{
   transition:transform .045s ease-out, box-shadow .045s ease-out, filter .045s ease-out;
   will-change:transform;
 }
-button small{font-size:.66em;font-weight:700;opacity:.72;letter-spacing:.04em;}
+button small{font-size:.66em;font-weight:700;opacity:.72;letter-spacing:.04em;overflow-wrap:break-word;}
 button:active,
 button.press{
   transform:translateY(calc(4px * var(--u))) scale(.975);
@@ -327,14 +327,15 @@ button:disabled{opacity:.35;}
       "mdn sdn st";
   }
   .timeGrid button{font-size:calc(clamp(15px,4vw,24px) * var(--u));}
+  #kStart{font-size:calc(clamp(14px,3vw,21px) * var(--u));}
 
   .osaeGrid{
-    grid-template-columns:1fr 1fr 1.15fr;
+    grid-template-columns:1fr 1fr 1.2fr;
     grid-template-rows:1fr 1fr 1fr;
     grid-template-areas:
-      "osu osd lnk"
-      "sl  sr  ost"
-      "ocl ocl rst";
+      "osu osd ost"
+      "sl  sr  rst"
+      "lnk lnk ocl";
   }
   .osaeGrid button{font-size:calc(clamp(12px,3.4vw,20px) * var(--u));}
   #kLink{font-size:calc(clamp(11px,2.7vw,16px) * var(--u));}
@@ -354,6 +355,9 @@ button:disabled{opacity:.35;}
 @media (orientation:landscape) and (max-height:560px){
   #board{height:34vh;min-height:150px;}
   #status{flex:1 1 90px;min-width:90px;}
+  /* 横幅の狭い横画面では試合時間部・抑え込み時間部を少し広げる */
+  #cols{grid-template-columns:22% 1fr 24%;}
+  #kStart small{display:none;}   /* ▶/❚❚ だけで十分なので副ラベルは省略 */
   .timeGrid{
     grid-template-columns:1fr 1fr 1.25fr;
     grid-template-rows:1fr 1fr;
@@ -362,13 +366,14 @@ button:disabled{opacity:.35;}
       "mdn sdn st";
   }
   .osaeGrid{
-    grid-template-columns:1fr 1fr 1.15fr;
+    grid-template-columns:1fr 1fr 1.2fr;
     grid-template-rows:1fr 1fr 1fr;
     grid-template-areas:
-      "osu osd lnk"
-      "sl  sr  ost"
-      "ocl ocl rst";
+      "osu osd ost"
+      "sl  sr  rst"
+      "lnk lnk ocl";
   }
+  #kStart{font-size:calc(clamp(14px,1.9vw,21px) * var(--u));}
   .sec{padding:5px 5px 13px;}
   .tb{padding:calc(5px * var(--u)) calc(8px * var(--u));}
   .tb small{display:none;}          /* 上部バーを1行に収める */
@@ -481,12 +486,12 @@ button:disabled{opacity:.35;}
       <!-- 試合時間部 -->
       <section class="sec sec-time">
         <div class="timeGrid">
-          <button class="k-amber span2" id="kGs">GS<small>GOLDEN SCORE</small></button>
+          <button class="k-amber span2" id="kGs">GS<small>ゴールデンスコア</small></button>
           <button class="k-green" id="kMinUp">＋<small>分</small></button>
           <button class="k-green" id="kSecUp">＋<small>秒</small></button>
           <button class="k-red" id="kMinDn">－<small>分</small></button>
           <button class="k-red" id="kSecDn">－<small>秒</small></button>
-          <button class="k-green span2 bigkey" id="kStart">▶／❚❚<small>START/STOP</small></button>
+          <button class="k-green span2 bigkey" id="kStart">▶/❚❚<small>START/STOP</small></button>
         </div>
         <div class="sec-name">試合時間</div>
       </section>
@@ -532,7 +537,7 @@ button:disabled{opacity:.35;}
           <button class="k-white" id="kOsSideL">◀ 白/左</button>
           <button class="k-white" id="kOsSideR">青/右 ▶</button>
           <button class="k-blue span2" id="kLink">自動ポイント<small id="linkTxt">連動</small></button>
-          <button class="k-green" id="kOsStart">▶／❚❚<small>開始／停止</small></button>
+          <button class="k-green" id="kOsStart">▶/❚❚<small>開始／停止</small></button>
           <button class="k-red" id="kOsReset">RESET<small>&amp; START</small></button>
           <button class="k-gray span2" id="kOsClear">リセット<small>抑え込み解除</small></button>
         </div>
