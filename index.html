@@ -14,18 +14,19 @@ html{background:#0b0b0d;}
 body{
   background:#0b0b0d;color:#f2f2f5;
   font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",system-ui,sans-serif;
-  overflow:hidden;touch-action:manipulation;
+  overflow-x:hidden;overflow-y:auto;-webkit-overflow-scrolling:touch;
+  touch-action:manipulation;
   -webkit-user-select:none;user-select:none;
 }
 
 /* ===== 表示モード倍率（モバイル版 / タブレット版） ===== */
-:root{ --u:1; }
+:root{ --u:1; --c:#ffffff; --g:rgba(255,255,255,.5); }
 body.ui-mobile{ --u:.84; }
 body.ui-tablet{ --u:1.16; }
 
 /* ===== 全体レイアウト（横向き＝表示盤+3列 / 縦向き＝表示盤+2段） ===== */
 #app{
-  height:100%;display:flex;flex-direction:column;gap:calc(7px * var(--u));
+  min-height:100%;display:flex;flex-direction:column;gap:calc(7px * var(--u));
   padding:calc(env(safe-area-inset-top) + 6px) 8px calc(env(safe-area-inset-bottom) + 6px);
 }
 
@@ -79,9 +80,11 @@ body.ui-tablet{ --u:1.16; }
 .badge.on.gs{background:#f2f2f5;color:#0d1526;box-shadow:0 0 12px rgba(255,255,255,.7);}
 
 /* 7セグ */
-.seg{fill:rgba(255,255,255,.06);}
-.seg.on{fill:var(--c);filter:drop-shadow(0 0 6px var(--g));}
-.dg{display:block;height:100%;width:auto;}
+.seg{fill:rgba(255,255,255,.07);}
+.seg.on{fill:var(--c,#ffffff);filter:drop-shadow(0 0 6px var(--g,rgba(255,255,255,.5)));}
+/* 実寸は JS の fitBoard() が width/height 属性で直接指定する
+   （height:100% / width:auto はビューアによって実寸が出ないことがあるため） */
+.dg{display:block;flex:0 0 auto;}
 
 #timeRow{grid-column:2;grid-row:1 / span 2;display:flex;align-items:center;justify-content:center;}
 #timeDisp{
@@ -152,7 +155,7 @@ button{
              0 calc(5px * var(--u)) 6px rgba(0,0,0,.35),
              inset 0 1px 0 rgba(255,255,255,.18);
   display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;
-  padding:4px 2px;min-height:0;
+  padding:4px 2px;min-height:calc(30px * var(--u));
   transition:transform .045s ease-out, box-shadow .045s ease-out, filter .045s ease-out;
   will-change:transform;
 }
@@ -267,6 +270,35 @@ button:disabled{opacity:.35;}
   .ptMid{flex:0 0 calc(62px * var(--u));}
   .ptTop button{font-size:calc(clamp(9px,2.4vw,14px) * var(--u));}
   .ptCol button{font-size:calc(clamp(12px,3.6vw,21px) * var(--u));}
+}
+
+/* 高さの足りない横向き画面（スマホ横・アプリ内ビューアなど）
+   ボタン段数を減らして操作可能な大きさを確保する */
+@media (orientation:landscape) and (max-height:560px){
+  #board{height:31vh;min-height:118px;}
+  #status{flex:1 1 90px;min-width:90px;}
+  .timeGrid{
+    grid-template-columns:1fr 1fr 1.25fr;
+    grid-template-rows:1fr 1fr;
+    grid-template-areas:
+      "mup sup gs"
+      "mdn sdn st";
+  }
+  .osaeGrid{
+    grid-template-columns:1fr 1fr 1.15fr;
+    grid-template-rows:1fr 1fr 1fr;
+    grid-template-areas:
+      "osu osd lnk"
+      "sl  sr  ost"
+      "ocl ocl rst";
+  }
+  .sec{padding:5px 5px 12px;}
+  .tb{padding:calc(4px * var(--u)) calc(7px * var(--u));}
+}
+
+@media (orientation:landscape) and (max-height:430px){
+  #status{display:none;}
+  #board{height:34vh;min-height:112px;}
 }
 
 /* 狭い端末では表示盤の指導ラベル(S1/S2の文字)を省いて横幅を確保 */
@@ -493,6 +525,7 @@ function makeDigit(){
   var svg = document.createElementNS(NS,"svg");
   svg.setAttribute("viewBox","0 0 100 180");
   svg.setAttribute("class","dg");
+  svg.setAttribute("data-w","100");
   var map = {};
   KEYS.forEach(function(k){
     var p = document.createElementNS(NS,"polygon");
@@ -512,6 +545,7 @@ function hideDigit(svg){ KEYS.forEach(function(k){ svg._segs[k].classList.remove
 function makeColon(){
   var svg = document.createElementNS(NS,"svg");
   svg.setAttribute("viewBox","0 0 34 180"); svg.setAttribute("class","dg");
+  svg.setAttribute("data-w","34");
   [62,122].forEach(function(y){
     var c = document.createElementNS(NS,"circle");
     c.setAttribute("cx",17); c.setAttribute("cy",y); c.setAttribute("r",10);
@@ -533,6 +567,47 @@ oD.forEach(function(s){ el("osaeDisp").appendChild(s); });
 var pD = { L:[makeDigit(),makeDigit(),makeDigit()], R:[makeDigit(),makeDigit(),makeDigit()] };
 pD.L.forEach(function(s){ el("ptDispL").appendChild(s); });
 pD.R.forEach(function(s){ el("ptDispR").appendChild(s); });
+
+
+/* 表示盤の数字サイズ調整
+   SVGの height:100% / width:auto は環境によって実寸が出ないことがあるため、
+   表示盤の実測サイズから各桁の幅・高さを px で直接指定する。 */
+function sizeDigits(box, h){
+  h = Math.round(h);
+  box.style.height = h + "px";
+  var kids = box.children;
+  for (var i = 0; i < kids.length; i++){
+    var sv = kids[i];
+    if (String(sv.tagName).toLowerCase() !== "svg") continue;
+    var w = Math.round(h * (parseFloat(sv.getAttribute("data-w")) || 100) / 180);
+    sv.setAttribute("width", w);   sv.setAttribute("height", h);
+    sv.style.width = w + "px";     sv.style.height = h + "px";
+  }
+}
+function applyDigitSize(Ht){
+  sizeDigits(el("timeDisp"), Ht);
+  sizeDigits(el("ptDispL"), Ht * 0.62);
+  sizeDigits(el("ptDispR"), Ht * 0.62);
+  sizeDigits(el("osaeDisp"), Ht * 0.58);
+}
+function fitBoard(){
+  var bd = el("board");
+  var W = bd.clientWidth - 26, H = bd.clientHeight - 18;
+  if (W < 60 || H < 40) return;
+  /* 縦：時計 + 得点 + ラベル / 横：時計(2.41H) + 得点(1.03H)×2 + 余白 */
+  var Ht = Math.min((H - 20) / 1.62, (W - 44) / 4.48);
+  Ht = Math.max(20, Math.min(220, Ht));
+  /* 実際にはみ出さなくなるまで縮める（ランプやラベルの分を自動で吸収） */
+  for (var k = 0; k < 8; k++){
+    applyDigitSize(Ht);
+    if (bd.scrollHeight <= bd.clientHeight + 1 && bd.scrollWidth <= bd.clientWidth + 1) break;
+    if (Ht <= 20) break;
+    Ht = Math.max(20, Ht * 0.88);
+  }
+}
+window.addEventListener("resize", fitBoard);
+window.addEventListener("orientationchange", function(){ setTimeout(fitBoard, 150); });
+if (window.ResizeObserver){ new ResizeObserver(fitBoard).observe(el("board")); }
 
 /* ===================================================================
    2. ブザー音（randori-programtimer の実機解析データを流用）
@@ -1186,6 +1261,7 @@ function applyUi(){
   el("kUi").firstChild.nodeValue = UI_LABEL[uiMode] === "自動" ? UI_LABEL[m] : UI_LABEL[uiMode];
   el("uiSub").textContent = (uiMode === "auto") ? "自動" : "表示モード";
   try{ localStorage.setItem("judoTimerUi", uiMode); }catch(e){}
+  fitBoard();
 }
 press("kUi", function(){
   uiMode = UI_MODES[(UI_MODES.indexOf(uiMode) + 1) % UI_MODES.length];
@@ -1194,6 +1270,9 @@ press("kUi", function(){
 window.addEventListener("resize", applyUi);
 window.addEventListener("orientationchange", function(){ setTimeout(applyUi, 120); });
 applyUi();
+fitBoard();
+requestAnimationFrame(fitBoard);
+window.addEventListener("load", fitBoard);
 
 render();
 </script>
