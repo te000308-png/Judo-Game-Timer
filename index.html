@@ -524,7 +524,7 @@ button:disabled{opacity:.35;}
   <h3>抑え込み時間部</h3>
   ・<b>START/STOP</b>：抑え込み開始／停止。<b>RESET&amp;START</b>：0に戻してすぐ再スタート。<br>
   ・<b>抑え込みリセット</b>：抑え込み解除（表示盤の「抑」消灯・得点確定）。<br>
-  ・<b>◀ ▶</b>：抑え込み側の選手（カラーが点滅）。<br>
+  ・<b>◀ ▶</b>：抑え込み側の選手（カラーが点滅）。<b>抑え込みを開始してから選べます。</b>一本になって試合が終わった後に選んでも、その時の秒数からポイントと勝者がさかのぼって付きます。もう一度押すと解除、反対側を押すと付け替えになります。<br>
   ・<b>自動ポイント（連動）</b>：P5秒→有効、P4秒→技あり、P3秒→一本。<br>
   　技ありを持っている選手はP4秒で<b>合わせ技一本</b>。<br>
   ・停止中に<b>秒 ±</b>で抑え込み時間を訂正すると、連動時はポイントも自動で訂正されます。<br>
@@ -825,6 +825,7 @@ function newMatch(){
     osaePausedWithMatch: false,  // 「待て」で試合と一緒に止めた抑え込み
     hansoku: null,        // 反則を取った側
     winner: null,
+    winnerByOsae: false,   // 抑え込みで自動的に決まった勝者かどうか
     fix: false            // 訂正モード
   };
 }
@@ -999,8 +1000,43 @@ function tick(now){
 requestAnimationFrame(tick);
 
 /* 抑え込み時間からポイント／終了を判定
-   ※一本（試合終了・ブザー）の判定は、抑え込み側の選手を選んでいなくても
-     必ず働くようにしている（未選択だとポイントだけが付かない）。 */
+
+   抑え込み側の選手は、取扱説明書の手順どおり「抑え込み開始」→「抑え込み側の
+   選手の決定」の順で選べる。開始後（一本になって試合が終わった後でも）
+   ◀白/左・青/右 を押した時点で、その時の抑え込み秒数からポイントと勝者を
+   さかのぼって計算し直す。 */
+
+/* 抑え込みが一本の時間に達しているか */
+function osaeIsIppon(){
+  var sec = M.osaeMs / 1000;
+  if (M.gs) return sec >= Math.min(S.p3, S.p4, S.p5);
+  return sec >= osaeIpponSec();
+}
+/* 一本になる秒数。技ありを持っている選手は P4 で合わせ技一本 */
+function osaeIpponSec(){
+  if (S.link && M.osaeSide && M[M.osaeSide].w >= 1 && S.p4 < S.p3) return S.p4;
+  return S.p3;
+}
+/* その秒数で与えるポイント（連動時のみ） */
+function osaeGrantAt(sec, side){
+  if (!S.link || !side) return null;
+  if (M.gs){
+    var gmin = Math.min(S.p3, S.p4, S.p5);
+    if (sec < gmin) return null;
+    return (gmin === S.p3) ? "I" : (gmin === S.p4 ? "W" : "Y");
+  }
+  return grantFor(sec, side);
+}
+/* 抑え込み側の選択・秒数の訂正に合わせてポイントと勝者を計算し直す */
+function refreshOsaeGrant(){
+  M.osaeGrant = osaeGrantAt(M.osaeMs / 1000, M.osaeSide);
+  if (M.osaeSide && M.osaeActive && osaeIsIppon()){
+    M.winner = M.osaeSide; M.winnerByOsae = true;
+  } else if (M.winnerByOsae){
+    M.winner = null; M.winnerByOsae = false;
+  }
+}
+
 function evalOsae(){
   var sec = M.osaeMs / 1000, side = M.osaeSide;
 
@@ -1009,8 +1045,7 @@ function evalOsae(){
     var gmin = Math.min(S.p3, S.p4, S.p5);
     if (sec >= gmin){
       M.osaeMs = gmin * 1000;
-      if (S.link && side) M.osaeGrant = (gmin === S.p3) ? "I" : (gmin === S.p4 ? "W" : "Y");
-      if (side) M.winner = side;
+      refreshOsaeGrant();
       stopOsae();
       endMatch(true);
     }
@@ -1018,16 +1053,11 @@ function evalOsae(){
   }
 
   /* 連動時は経過秒に応じてポイントを更新（P5→有効 / P4→技あり） */
-  if (S.link && side) M.osaeGrant = grantFor(sec, side);
+  M.osaeGrant = osaeGrantAt(sec, side);
 
-  /* 一本になる時間。技ありを持っている選手は P4 で合わせ技一本 */
-  var limit = S.p3;
-  if (S.link && side && M[side].w >= 1 && S.p4 < S.p3) limit = S.p4;
-
-  if (sec >= limit){
-    M.osaeMs = limit * 1000;
-    if (S.link && side) M.osaeGrant = grantFor(limit, side);
-    if (side) M.winner = side;
+  if (sec >= osaeIpponSec()){
+    M.osaeMs = osaeIpponSec() * 1000;
+    refreshOsaeGrant();
     stopOsae();
     endMatch(true);          // ブザー2.5秒
   }
@@ -1140,16 +1170,18 @@ function adjOsae(d){
   if (setMode > 0) return;
   if (M.osaeRun) return;                       // 停止中のみ訂正可
   M.osaeMs = clamp(M.osaeMs + d*1000, 0, 99000);
-  /* 連動時は時間の訂正に合わせてポイントも自動訂正 */
-  if (S.link && M.osaeSide){
-    var g = grantFor(M.osaeMs/1000, M.osaeSide);
-    M.osaeGrant = (g === "AWASE" || g === "I") ? g : g;
-  }
+  /* 時間の訂正に合わせてポイントと勝者も自動訂正 */
+  refreshOsaeGrant();
 }
 press("kOsSecUp", function(){ adjOsae(1); });
 press("kOsSecDn", function(){ adjOsae(-1); });
-press("kOsSideL", function(){ M.osaeSide = (M.osaeSide==="L") ? null : "L"; });
-press("kOsSideR", function(){ M.osaeSide = (M.osaeSide==="R") ? null : "R"; });
+function setOsaeSide(side){
+  if (setMode > 0) return;
+  M.osaeSide = (M.osaeSide === side) ? null : side;
+  refreshOsaeGrant();          // 開始後・一本の後に選んでもさかのぼって反映
+}
+press("kOsSideL", function(){ setOsaeSide("L"); });
+press("kOsSideR", function(){ setOsaeSide("R"); });
 press("kLink", function(){ S.link = !S.link; if (!S.link){ commitOsae(); } });
 
 /* ---- ポイント部 ---- */
@@ -1193,8 +1225,8 @@ Array.prototype.forEach.call(document.querySelectorAll("[data-p]"), function(b){
 press("kFix", function(){ M.fix = !M.fix; });
 press("kInjL", function(){ M.L.inj = M.fix ? Math.max(0,M.L.inj-1) : (M.L.inj>=2?0:M.L.inj+1); M.fix=false; });
 press("kInjR", function(){ M.R.inj = M.fix ? Math.max(0,M.R.inj-1) : (M.R.inj>=2?0:M.R.inj+1); M.fix=false; });
-press("kWinL", function(){ M.winner = (M.winner==="L") ? null : "L"; });
-press("kWinR", function(){ M.winner = (M.winner==="R") ? null : "R"; });
+press("kWinL", function(){ M.winner = (M.winner==="L") ? null : "L"; M.winnerByOsae = false; });
+press("kWinR", function(){ M.winner = (M.winner==="R") ? null : "R"; M.winnerByOsae = false; });
 press("kColor", function(){ S.colorIdx = (S.colorIdx + 1) % COLORS.length; });
 
 /* ---- 上部バー ---- */
