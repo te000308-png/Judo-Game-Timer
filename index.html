@@ -248,6 +248,42 @@ button:disabled{opacity:.35;}
 .k-gray {--k:#2f3745; --lip:#1a2029;}   /* 汎用 */
 .k-white{--k:#dde3ee; --lip:#a3abbb; color:#141922;}
 .k-gold {--k:#b8963f; --lip:#755f26;}   /* 確認待ち */
+
+/* 「はじめ」「待て」は使用頻度が高いので、状態で文字と色が変わる大きなキーにする */
+#kStart{
+  font-size:calc(clamp(22px,3.1vw,44px) * var(--u)) !important;
+  letter-spacing:.1em;border-radius:14px;gap:3px;
+}
+#kStart small{font-size:max(calc(9.5px * var(--u)), .40em);letter-spacing:.14em;opacity:.76;}
+.k-hajime{--k:#2ea471; --lip:#186147;}
+.k-mate  {--k:#cb7c1e; --lip:#7d4a10;}
+.k-done  {--k:#39414f; --lip:#222932;}
+#kStart.k-hajime{
+  box-shadow:0 calc(5px * var(--u)) 0 var(--lip),
+             0 0 calc(26px * var(--u)) rgba(58,200,142,.42),
+             inset 0 1px 0 rgba(255,255,255,.22);
+}
+#kStart.k-mate{
+  box-shadow:0 calc(5px * var(--u)) 0 var(--lip),
+             0 0 calc(26px * var(--u)) rgba(235,155,50,.48),
+             inset 0 1px 0 rgba(255,255,255,.22);
+}
+/* 押し込み時は上の影指定より後ろに置いて打ち消す */
+#kStart:active, #kStart.press{
+  box-shadow:0 0 0 var(--lip),
+             inset 0 calc(3px * var(--u)) calc(8px * var(--u)) rgba(0,0,0,.45);
+}
+@media (prefers-reduced-motion:no-preference){
+  #kStart.k-hajime{animation:hajimeGlow 2.6s ease-in-out infinite;}
+}
+@keyframes hajimeGlow{
+  0%,100%{ box-shadow:0 calc(5px * var(--u)) 0 var(--lip),
+                      0 0 calc(18px * var(--u)) rgba(58,200,142,.30),
+                      inset 0 1px 0 rgba(255,255,255,.22); }
+  50%    { box-shadow:0 calc(5px * var(--u)) 0 var(--lip),
+                      0 0 calc(34px * var(--u)) rgba(58,200,142,.58),
+                      inset 0 1px 0 rgba(255,255,255,.22); }
+}
 .k-on{outline:2px solid var(--gold);outline-offset:-2px;}
 
 /* 上部バーは縮めずに、入りきらない分だけ次の行へ折り返す */
@@ -262,7 +298,7 @@ button:disabled{opacity:.35;}
 .timeGrid{
   flex:1 1 auto;min-height:0;display:grid;gap:calc(5px * var(--u));
   grid-template-columns:1fr 1fr;
-  grid-template-rows:auto 1fr 1fr auto;
+  grid-template-rows:auto 1fr 1fr 1.95fr;
   grid-template-areas:
     "gs  gs"
     "mup sup"
@@ -319,15 +355,17 @@ button:disabled{opacity:.35;}
   .sec-time{grid-column:1;grid-row:2;}
   .sec-osae{grid-column:2;grid-row:2;}
 
+  /* 「はじめ／待て」は最下段いっぱいに置いて押しやすくする */
   .timeGrid{
-    grid-template-columns:1fr 1fr 1.25fr;
-    grid-template-rows:1fr 1fr;
+    grid-template-columns:1fr 1fr 1.15fr;
+    grid-template-rows:.82fr .82fr 1.2fr;
     grid-template-areas:
       "mup sup gs"
-      "mdn sdn st";
+      "mdn sdn gs"
+      "st  st  st";
   }
   .timeGrid button{font-size:calc(clamp(15px,4vw,24px) * var(--u));}
-  #kStart{font-size:calc(clamp(14px,3vw,21px) * var(--u));}
+  #kStart{font-size:calc(clamp(17px,4.6vw,30px) * var(--u)) !important;}
 
   .osaeGrid{
     grid-template-columns:1fr 1fr 1.2fr;
@@ -358,12 +396,14 @@ button:disabled{opacity:.35;}
   /* 横幅の狭い横画面では試合時間部・抑え込み時間部を少し広げる */
   #cols{grid-template-columns:22% 1fr 24%;}
   #kStart small{display:none;}   /* ▶/❚❚ だけで十分なので副ラベルは省略 */
+  /* 「はじめ／待て」は最下段いっぱいに置いて押しやすくする */
   .timeGrid{
-    grid-template-columns:1fr 1fr 1.25fr;
-    grid-template-rows:1fr 1fr;
+    grid-template-columns:1fr 1fr 1.15fr;
+    grid-template-rows:.82fr .82fr 1.2fr;
     grid-template-areas:
       "mup sup gs"
-      "mdn sdn st";
+      "mdn sdn gs"
+      "st  st  st";
   }
   .osaeGrid{
     grid-template-columns:1fr 1fr 1.2fr;
@@ -373,7 +413,7 @@ button:disabled{opacity:.35;}
       "sl  sr  rst"
       "lnk lnk ocl";
   }
-  #kStart{font-size:calc(clamp(14px,1.9vw,21px) * var(--u));}
+  #kStart{font-size:calc(clamp(17px,2.6vw,30px) * var(--u)) !important;}
   .sec{padding:5px 5px 13px;}
   .tb{padding:calc(5px * var(--u)) calc(8px * var(--u));}
   .tb small{display:none;}          /* 上部バーを1行に収める */
@@ -491,7 +531,7 @@ button:disabled{opacity:.35;}
           <button class="k-green" id="kSecUp">＋<small>秒</small></button>
           <button class="k-red" id="kMinDn">－<small>分</small></button>
           <button class="k-red" id="kSecDn">－<small>秒</small></button>
-          <button class="k-green span2 bigkey" id="kStart">▶/❚❚<small>START/STOP</small></button>
+          <button class="span2 bigkey k-hajime" id="kStart"><span id="startLabel">はじめ</span><small id="startSub">HAJIME / START</small></button>
         </div>
         <div class="sec-name">試合時間</div>
       </section>
@@ -563,7 +603,7 @@ button:disabled{opacity:.35;}
   ・「音切替」で 大・連続 → 大・断続 → 消音 → 小・連続 → 小・断続 の5パターン。
 
   <h3>試合時間部</h3>
-  ・<b>START/STOP</b>：試合時間の開始／停止（＝「待て」）。停止中に<b>分・秒 ±</b>で時間訂正。<br>
+  ・<b>はじめ／待て</b>：試合時間の開始／停止。押すと何が起きるかがそのままボタンに出ます（止まっているとき＝緑の「はじめ」、動いているとき＝橙の「待て」）。停止中に<b>分・秒 ±</b>で時間訂正。<br>
   ・<b>横画面では、表示盤の時計の数字をタップしても開始／停止できます。</b>（縦画面では誤操作防止のため無効）<br>
   ・<b>GS</b>：ゴールデンスコアへ。0からカウントアップ（上限＝P2）。もう一度押すと解除。
 
@@ -946,6 +986,29 @@ function render(){
   }
 
   /* --- 抑え込み / GS 表示 --- */
+  /* 「はじめ」「待て」：押した結果が文字と色でわかるようにする */
+  var mode = (setMode > 0) ? "set" : (M.over ? "done" : (M.running ? "mate" : "hajime"));
+  if (mode !== lastStartMode){
+    lastStartMode = mode;
+    var kb = el("kStart");
+    kb.classList.toggle("k-hajime", mode === "hajime");
+    kb.classList.toggle("k-mate",   mode === "mate");
+    kb.classList.toggle("k-done",   mode === "done" || mode === "set");
+  }
+  if (mode === "set"){
+    setText(el("startLabel"), S.countDown ? "減算" : "加算");
+    setText(el("startSub"), "COUNT UP / DOWN 切替");
+  } else if (mode === "done"){
+    setText(el("startLabel"), "試合終了");
+    setText(el("startSub"), "GAME OVER");
+  } else if (mode === "mate"){
+    setText(el("startLabel"), "待　て");
+    setText(el("startSub"), "MATE / STOP");
+  } else {
+    setText(el("startLabel"), "はじめ");
+    setText(el("startSub"), "HAJIME / START");
+  }
+
   document.body.classList.toggle("running", M.running);
   el("bdOsae").classList.toggle("on", M.osaeActive);
   el("bdGs").classList.toggle("on", M.gs);
@@ -984,6 +1047,9 @@ function render(){
   el("kBuzzMode").firstChild.nodeValue = BUZZ_MODES[S.buzzMode].name;
 }
 function fmtMS(s){ return Math.floor(s/60) + ":" + fmt2(s%60); }
+/* 毎フレーム呼ばれるので、変化したときだけ書き換える */
+var lastStartMode = "";
+function setText(e, txt){ if (e.textContent !== txt) e.textContent = txt; }
 
 /* 連動時に抑え込みで加算中のポイントを合成した「見た目の得点」 */
 function effective(side){
