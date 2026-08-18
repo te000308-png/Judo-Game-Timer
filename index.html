@@ -68,7 +68,7 @@ body.ui-tablet{ --u:1.18; }
   margin-bottom:calc(-6px * var(--u));
 }
 #board{
-  height:36vh;min-height:158px;
+  height:50vh;min-height:158px;
   background:radial-gradient(125% 145% at 50% -12%, #1c2532 0%, #101620 52%, #080b11 100%);
   border:1px solid #2b3547;border-radius:14px;
   box-shadow:0 12px 32px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.07);
@@ -222,7 +222,7 @@ button{
              0 calc(6px * var(--u)) 12px rgba(0,0,0,.34),
              inset 0 1px 0 rgba(255,255,255,.14);
   display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
-  padding:5px 3px;min-height:calc(36px * var(--u));
+  padding:5px 3px;min-height:calc(33px * var(--u));
   /* グリッド／フレックスの子として、枠より横に広がらないようにする */
   min-width:0;overflow:hidden;overflow-wrap:anywhere;
   transition:transform .045s ease-out, box-shadow .045s ease-out, filter .045s ease-out;
@@ -251,7 +251,7 @@ button:disabled{opacity:.35;}
 
 /* 「はじめ」「待て」は使用頻度が高いので、状態で文字と色が変わる大きなキーにする */
 #kStart{
-  font-size:calc(clamp(22px,3.1vw,44px) * var(--u)) !important;
+  font-size:calc(clamp(20px,2.7vw,38px) * var(--u)) !important;
   letter-spacing:.1em;border-radius:14px;gap:3px;
 }
 #kStart small{font-size:max(calc(9.5px * var(--u)), .40em);letter-spacing:.14em;opacity:.76;}
@@ -298,7 +298,7 @@ button:disabled{opacity:.35;}
 .timeGrid{
   flex:1 1 auto;min-height:0;display:grid;gap:calc(5px * var(--u));
   grid-template-columns:1fr 1fr;
-  grid-template-rows:auto 1fr 1fr 1.95fr;
+  grid-template-rows:auto 1fr 1fr 1.7fr;
   grid-template-areas:
     "gs  gs"
     "mup sup"
@@ -307,18 +307,18 @@ button:disabled{opacity:.35;}
 }
 #kGs{grid-area:gs;} #kMinUp{grid-area:mup;} #kSecUp{grid-area:sup;}
 #kMinDn{grid-area:mdn;} #kSecDn{grid-area:sdn;} #kStart{grid-area:st;}
-.timeGrid button{font-size:calc(clamp(17px,2.3vw,30px) * var(--u));}
+.timeGrid button{font-size:calc(clamp(15px,1.95vw,25px) * var(--u));}
 
 /* ===== ポイント部 ===== */
 .ptTop{flex:0 0 auto;display:flex;gap:calc(5px * var(--u));align-items:stretch;}
-.ptTop button{flex:1 1 0;min-width:0;font-size:calc(clamp(12px,1.6vw,21px) * var(--u));}
+.ptTop button{flex:1 1 0;min-width:0;font-size:calc(clamp(11px,1.4vw,18px) * var(--u));}
 .ptMain{flex:1 1 auto;display:flex;gap:calc(6px * var(--u));min-height:0;}
 .ptCol{flex:1 1 0;display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:1fr;gap:calc(5px * var(--u));min-width:0;}
 .ptCol.right{direction:rtl;}
 .ptCol.right button{direction:ltr;}
-.ptCol button{font-size:calc(clamp(17px,2.2vw,32px) * var(--u));}
+.ptCol button{font-size:calc(clamp(15px,1.9vw,27px) * var(--u));}
 .ptMid{flex:0 0 calc(80px * var(--u));display:flex;flex-direction:column;gap:5px;justify-content:center;}
-.ptMid button{font-size:calc(14px * var(--u));padding:calc(9px * var(--u)) 3px;}
+.ptMid button{font-size:calc(13px * var(--u));padding:calc(8px * var(--u)) 3px;}
 
 /* ===== 抑え込み時間部 ===== */
 .osaeGrid{
@@ -336,8 +336,8 @@ button:disabled{opacity:.35;}
 #kOsSideL{grid-area:sl;} #kOsSideR{grid-area:sr;}
 #kLink{grid-area:lnk;} #kOsStart{grid-area:ost;}
 #kOsReset{grid-area:rst;} #kOsClear{grid-area:ocl;}
-.osaeGrid button{font-size:calc(clamp(14px,1.85vw,23px) * var(--u));}
-#kLink{font-size:calc(clamp(13px,1.7vw,21px) * var(--u));}
+.osaeGrid button{font-size:calc(clamp(13px,1.6vw,20px) * var(--u));}
+#kLink{font-size:calc(clamp(12px,1.5vw,18px) * var(--u));}
 
 /* ===================================================================
    縦画面
@@ -386,12 +386,12 @@ button:disabled{opacity:.35;}
 /* 横画面：ボタンを詰めて小さくせず、最低限の大きさを確保する。
    画面に収まらない場合は下にスクロールしてポイント部を操作する。 */
 @media (orientation:landscape){
-  #cols{min-height:calc(350px * var(--u));}
+  #cols{min-height:calc(270px * var(--u));}
 }
 
 /* 高さの足りない横向き画面 */
 @media (orientation:landscape) and (max-height:560px){
-  #board{height:34vh;min-height:150px;}
+  #board{height:40vh;min-height:160px;}
   #status{flex:1 1 90px;min-width:90px;}
   /* 横幅の狭い横画面では試合時間部・抑え込み時間部を少し広げる */
   #cols{grid-template-columns:22% 1fr 24%;}
@@ -423,7 +423,7 @@ button:disabled{opacity:.35;}
 }
 @media (orientation:landscape) and (max-height:430px){
   #status{display:none;}
-  #board{height:44vh;min-height:150px;}
+  #board{height:48vh;min-height:160px;}
 }
 
 /* 狭い端末では指導ラベルの文字を省いて横幅を確保 */
@@ -728,16 +728,16 @@ function sizeDigits(box, h){
 }
 function applyDigitSize(Ht){
   sizeDigits(el("timeDisp"), Ht);
-  sizeDigits(el("ptDispL"), Ht * 0.66);
-  sizeDigits(el("ptDispR"), Ht * 0.66);
-  sizeDigits(el("osaeDisp"), Ht * 0.62);
+  sizeDigits(el("ptDispL"), Ht * 0.78);
+  sizeDigits(el("ptDispR"), Ht * 0.78);
+  sizeDigits(el("osaeDisp"), Ht * 0.70);
 }
 function fitBoard(){
   var bd = el("board");
   var W = bd.clientWidth - 26, H = bd.clientHeight - 18;
   if (W < 60 || H < 40) return;
   /* 縦：時計 + 得点 + ラベル / 横：時計(2.41H) + 得点(1.03H)×2 + 余白 */
-  var Ht = Math.min((H - 20) / 1.66, (W - 40) / 4.72);
+  var Ht = Math.min((H - 20) / 1.82, (W - 40) / 5.05);
   Ht = Math.max(15, Math.min(300, Ht));
   /* 実際にはみ出さなくなるまで縮める（ランプやラベルの分を自動で吸収） */
   for (var k = 0; k < 8; k++){
@@ -747,8 +747,32 @@ function fitBoard(){
     Ht = Math.max(15, Ht * 0.88);
   }
 }
-window.addEventListener("resize", fitBoard);
-window.addEventListener("orientationchange", function(){ setTimeout(fitBoard, 150); });
+/* 横画面では、操作パネルが必要とする高さを引いた残りを全部
+   表示盤に割り当てる。はみ出さなくなるまで少しずつ下げて決める。 */
+var LAND_MAX = 0.62, LAND_MIN = 0.36;
+function fitLayout(){
+  var bd = el("board");
+  if (!isLandscape()){ bd.style.height = ""; fitBoard(); return; }
+  var vh = window.innerHeight;
+  var min = Math.max(158, Math.round(vh * LAND_MIN));
+  var h = Math.round(vh * LAND_MAX);
+  var step = Math.max(6, Math.round(vh * 0.015));
+  bd.style.height = h + "px";
+  for (var i = 0; i < 24 && h > min; i++){
+    if (document.documentElement.scrollHeight <= vh + 1) break;
+    h = Math.max(min, h - step);
+    bd.style.height = h + "px";
+  }
+  /* 縮めても1画面に収まらない画面（スマホ横など）は、どのみち
+     スクロールするので表示盤は読める大きさを確保する */
+  if (document.documentElement.scrollHeight > vh + 1){
+    h = Math.max(h, Math.round(vh * 0.46));
+    bd.style.height = h + "px";
+  }
+  fitBoard();
+}
+window.addEventListener("resize", fitLayout);
+window.addEventListener("orientationchange", function(){ setTimeout(fitLayout, 150); });
 if (window.ResizeObserver){ new ResizeObserver(fitBoard).observe(el("board")); }
 
 /* ===================================================================
@@ -1422,6 +1446,7 @@ press("kHelpClose", function(){ el("help").classList.remove("show"); });
 /* 横画面では時計の数字タップでも開始／停止できる（縦画面では誤操作防止で無効） */
 function isLandscape(){ return window.innerWidth >= window.innerHeight; }
 function applyTapTime(){ document.body.classList.toggle("tap-time", isLandscape()); }
+window.addEventListener("orientationchange", function(){ setTimeout(applyTapTime, 120); });
 (function(){
   var t = el("timeRow");
   t.addEventListener("click", function(){
@@ -1521,7 +1546,7 @@ function applyUi(){
   el("kUi").firstChild.nodeValue = UI_LABEL[uiMode] === "自動" ? UI_LABEL[m] : UI_LABEL[uiMode];
   el("uiSub").textContent = (uiMode === "auto") ? "自動" : "表示モード";
   try{ localStorage.setItem("judoTimerUi", uiMode); }catch(e){}
-  fitBoard();
+  fitLayout();
 }
 press("kUi", function(){
   uiMode = UI_MODES[(UI_MODES.indexOf(uiMode) + 1) % UI_MODES.length];
@@ -1531,9 +1556,9 @@ window.addEventListener("resize", applyUi);
 window.addEventListener("orientationchange", function(){ setTimeout(applyUi, 120); });
 applyUi();
 applyTapTime();
-fitBoard();
-requestAnimationFrame(fitBoard);
-window.addEventListener("load", fitBoard);
+fitLayout();
+requestAnimationFrame(fitLayout);
+window.addEventListener("load", fitLayout);
 
 render();
 </script>
