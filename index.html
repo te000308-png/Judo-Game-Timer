@@ -8,112 +8,150 @@
 <meta name="theme-color" content="#0b0b0d">
 <title>柔道試合タイマー</title>
 <style>
+/* ===================================================================
+   配色トークン
+   審判台で操作する機材としての落ち着いた寒色グレーを地に、
+   ボタンは原色を避けた低彩度の色で機能を分ける。
+   表示盤の数字だけは視認性優先で明るく発光させる。
+   =================================================================== */
+:root{
+  --u:1;
+
+  --bg:#0d1015;
+  --surface:#151a22;
+  --surface-2:#1c222c;
+  --line:#28303d;
+  --ink:#e7eaf1;
+  --ink-dim:#828c9e;
+  --ink-faint:#5a6373;
+
+  --gold:#e3c169;
+  --gold-soft:#b8963f;
+
+  /* 表示盤の発光色 */
+  --c:#f2f5ff;
+  --g:rgba(220,232,255,.55);
+  --led-point:#f0a63c;
+  --led-osae:#f05a4e;
+  --led-shido:#e8a63a;
+  --led-injury:#48c98a;
+}
+
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 html,body{height:100%;}
-html{background:#0b0b0d;}
+html{background:var(--bg);}
 body{
-  background:#0b0b0d;color:#f2f2f5;
-  font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",system-ui,sans-serif;
+  background:var(--bg);color:var(--ink);
+  font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP","Yu Gothic",system-ui,sans-serif;
   overflow-x:hidden;overflow-y:auto;-webkit-overflow-scrolling:touch;
   touch-action:manipulation;
   -webkit-user-select:none;user-select:none;
 }
+body.ui-mobile{ --u:.86; }
+body.ui-tablet{ --u:1.18; }
 
-/* ===== 表示モード倍率（モバイル版 / タブレット版） ===== */
-:root{ --u:1; --c:#ffffff; --g:rgba(255,255,255,.5); }
-body.ui-mobile{ --u:.84; }
-body.ui-tablet{ --u:1.16; }
-
-/* ===== 全体レイアウト（横向き＝表示盤+3列 / 縦向き＝表示盤+2段） ===== */
 #app{
   min-height:100%;display:flex;flex-direction:column;gap:calc(7px * var(--u));
-  padding:calc(env(safe-area-inset-top) + 6px) 8px calc(env(safe-area-inset-bottom) + 6px);
+  padding:calc(env(safe-area-inset-top) + 7px) 9px calc(env(safe-area-inset-bottom) + 7px);
 }
 
 /* ===================================================================
-   表示盤（前面パネル相当）
+   表示盤
    =================================================================== */
 #board{
   flex:0 0 auto;height:32vh;min-height:150px;
-  background:linear-gradient(#1b2a4a,#0d1526 60%,#070b14);
-  border:2px solid #2f4877;border-radius:14px;
-  box-shadow:0 8px 22px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.12);
-  padding:8px 12px;position:relative;
+  background:radial-gradient(125% 145% at 50% -12%, #1c2532 0%, #101620 52%, #080b11 100%);
+  border:1px solid #2b3547;border-radius:16px;
+  box-shadow:0 12px 32px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.07);
+  padding:9px 14px;position:relative;
   display:grid;
   grid-template-columns:1fr auto 1fr;
   grid-template-rows:auto 1fr auto;
   align-items:center;column-gap:12px;
 }
-.b-side{display:flex;flex-direction:column;gap:4px;min-width:0;}
+.b-side{display:flex;flex-direction:column;gap:5px;min-width:0;}
 .b-side.r{align-items:flex-end;}
 
-/* 指導ランプ S1/S2 */
+/* 指導ランプ */
 .shido{display:flex;gap:calc(9px * var(--u));align-items:center;}
 .b-side.r .shido{flex-direction:row-reverse;}
-.slamp{display:flex;align-items:center;gap:4px;font-size:calc(12px * var(--u));font-weight:800;color:#7d8296;}
+.slamp{
+  display:flex;align-items:center;gap:5px;
+  font-size:calc(12px * var(--u));font-weight:700;letter-spacing:.06em;color:var(--ink-faint);
+}
 .slamp i{
-  width:calc(13px * var(--u));height:calc(13px * var(--u));border-radius:50%;background:#2a2f3d;
-  box-shadow:inset 0 0 3px #000;display:block;
+  width:calc(12px * var(--u));height:calc(12px * var(--u));border-radius:50%;
+  background:#232b38;box-shadow:inset 0 1px 2px rgba(0,0,0,.7);display:block;
 }
-.slamp.on i{background:#ffa412;box-shadow:0 0 10px rgba(255,164,18,.9);}
-.slamp.on{color:#ffc35e;}
+.slamp.on i{background:var(--led-shido);box-shadow:0 0 11px rgba(232,166,58,.85);}
+.slamp.on{color:#e9c47e;}
 
-/* 選手カラーバー */
+/* 選手カラー */
 .colorbar{
-  width:100%;max-width:calc(150px * var(--u));height:calc(11px * var(--u));border-radius:3px;
-  background:#20242f;box-shadow:inset 0 0 4px #000;
+  width:100%;max-width:calc(158px * var(--u));height:calc(10px * var(--u));border-radius:5px;
+  background:#1e2530;box-shadow:inset 0 1px 3px rgba(0,0,0,.7);
 }
-.colorbar.w{background:#f2f2f5;box-shadow:0 0 10px rgba(255,255,255,.5);}
-.colorbar.b{background:#1f6bff;box-shadow:0 0 10px rgba(31,107,255,.7);}
-.colorbar.r{background:#ff2a1c;box-shadow:0 0 10px rgba(255,42,28,.7);}
+.colorbar.w{background:#eef1f7;box-shadow:0 0 12px rgba(238,241,247,.45);}
+.colorbar.b{background:#3f7fe0;box-shadow:0 0 12px rgba(63,127,224,.6);}
+.colorbar.r{background:#e0574c;box-shadow:0 0 12px rgba(224,87,76,.6);}
 
-/* 負傷（＋＋） */
-.injury{display:flex;gap:6px;font-size:calc(18px * var(--u));font-weight:900;color:#1b2233;line-height:1;}
-.injury span.on{color:#22e06a;text-shadow:0 0 10px rgba(34,224,106,.8);}
+/* 負傷 */
+.injury{display:flex;gap:6px;font-size:calc(17px * var(--u));font-weight:800;color:#1c2330;line-height:1;}
+.injury span.on{color:var(--led-injury);text-shadow:0 0 10px rgba(72,201,138,.75);}
 
-/* 抑え込み／ゴールデンスコア表示 */
+/* 抑え込み / GS */
 .badge{
-  font-size:calc(11px * var(--u));font-weight:900;letter-spacing:.04em;
-  padding:2px 7px;border-radius:4px;background:#20242f;color:#454b5e;
+  font-size:calc(11px * var(--u));font-weight:800;letter-spacing:.1em;
+  padding:3px 8px;border-radius:5px;background:#1e2530;color:#3f4859;
 }
-.badge.on.osae{background:#ff2a1c;color:#fff;box-shadow:0 0 12px rgba(255,42,28,.8);}
-.badge.on.gs{background:#f2f2f5;color:#0d1526;box-shadow:0 0 12px rgba(255,255,255,.7);}
+.badge.on.osae{background:var(--led-osae);color:#1a0d0c;box-shadow:0 0 14px rgba(240,90,78,.7);}
+.badge.on.gs{background:#eef1f7;color:#101620;box-shadow:0 0 14px rgba(238,241,247,.6);}
+
+/* WINNER 表示 */
+.winner{
+  /* 表示・非表示で高さが変わらないよう visibility で切り替える */
+  visibility:hidden;line-height:1.15;
+  font-size:calc(19px * var(--u));font-weight:900;letter-spacing:.28em;
+  background:linear-gradient(178deg,#fff2c4 0%,#e8c46c 42%,#c2942f 100%);
+  -webkit-background-clip:text;background-clip:text;
+  -webkit-text-fill-color:transparent;color:transparent;
+  filter:drop-shadow(0 0 10px rgba(227,193,105,.65)) drop-shadow(0 1px 0 rgba(0,0,0,.5));
+}
+.winner.on{visibility:visible;animation:winpulse 1.5s ease-in-out infinite;}
+@keyframes winpulse{0%,100%{opacity:1}50%{opacity:.55}}
 
 /* 7セグ */
-.seg{fill:rgba(255,255,255,.07);}
-.seg.on{fill:var(--c,#ffffff);filter:drop-shadow(0 0 6px var(--g,rgba(255,255,255,.5)));}
+.seg{fill:rgba(226,236,255,.055);}
+.seg.on{fill:var(--c,#f2f5ff);filter:drop-shadow(0 0 7px var(--g,rgba(220,232,255,.5)));}
 /* 実寸は JS の fitBoard() が width/height 属性で直接指定する
    （height:100% / width:auto はビューアによって実寸が出ないことがあるため） */
 .dg{display:block;flex:0 0 auto;}
 
 #timeRow{grid-column:2;grid-row:1 / span 2;display:flex;align-items:center;justify-content:center;}
-#timeDisp{
-  display:flex;align-items:center;
-  height:clamp(52px, 14vh, 150px);
-  --c:#ffffff;--g:rgba(255,255,255,.55);
-}
+#timeDisp{display:flex;align-items:center;height:clamp(52px,14vh,150px);}
 #buzzLamp{
-  width:calc(13px * var(--u));height:calc(13px * var(--u));border-radius:50%;
-  background:#2a2f3d;box-shadow:inset 0 0 3px #000;flex:0 0 auto;
+  width:calc(12px * var(--u));height:calc(12px * var(--u));border-radius:50%;
+  background:#232b38;box-shadow:inset 0 1px 2px rgba(0,0,0,.7);flex:0 0 auto;
 }
-#buzzLamp.on{background:#ffa412;box-shadow:0 0 14px rgba(255,164,18,1);}
+#buzzLamp.on{background:var(--led-shido);box-shadow:0 0 15px rgba(232,166,58,.95);}
 
-/* 得点行 */
-.ptrow{display:flex;flex-direction:column;align-items:center;gap:2px;}
+.ptrow{display:flex;flex-direction:column;align-items:center;gap:3px;}
 .ptdigits{
-  display:flex;gap:4px;height:clamp(34px, 9vh, 96px);
-  --c:#ff9a1f;--g:rgba(255,154,31,.6);
+  display:flex;gap:5px;height:clamp(34px,9vh,96px);
+  --c:var(--led-point);--g:rgba(240,166,60,.55);
 }
-.ptlabel{display:flex;gap:4px;font-size:calc(11px * var(--u));font-weight:900;color:#6d7488;letter-spacing:.35em;}
+.ptlabel{
+  display:flex;gap:5px;font-size:calc(10.5px * var(--u));font-weight:800;
+  color:var(--ink-faint);letter-spacing:.42em;
+}
 #ptL{grid-column:1;grid-row:3;justify-self:start;}
 #ptR{grid-column:3;grid-row:3;justify-self:end;}
-#osaeWrap{grid-column:2;grid-row:3;display:flex;flex-direction:column;align-items:center;gap:2px;}
-#osaeDisp{display:flex;gap:4px;height:clamp(30px, 8vh, 86px);--c:#ff2a1c;--g:rgba(255,42,28,.6);}
-.hint{font-size:calc(10px * var(--u));color:#5b6178;letter-spacing:.15em;}
+#osaeWrap{grid-column:2;grid-row:3;display:flex;flex-direction:column;align-items:center;gap:3px;}
+#osaeDisp{display:flex;gap:5px;height:clamp(30px,8vh,86px);--c:var(--led-osae);--g:rgba(240,90,78,.55);}
+.hint{font-size:calc(9.5px * var(--u));color:var(--ink-faint);letter-spacing:.2em;}
 
-/* 勝者点滅 */
 @keyframes blink{0%,49%{opacity:1}50%,100%{opacity:.15}}
-.win-blink{animation:blink .6s steps(1,end) infinite;}
+.win-blink{animation:blink .62s steps(1,end) infinite;}
 
 /* ===================================================================
    操作パネル
@@ -122,64 +160,73 @@ body.ui-tablet{ --u:1.16; }
 
 #topbar{
   flex:0 0 auto;display:flex;flex-wrap:wrap;gap:calc(5px * var(--u));align-items:center;
-  background:#151821;border:1px solid #2a2f3d;border-radius:10px;padding:5px 7px;
+  background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:6px 8px;
 }
 #status{
-  margin-left:auto;font-size:calc(11.5px * var(--u));font-weight:800;color:#8b91a6;
+  margin-left:auto;font-size:calc(12px * var(--u));font-weight:700;color:var(--ink-dim);
   font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
 }
-#status b{color:#ffd15e;}
+#status b{color:var(--gold);}
 
 #cols{
   flex:1 1 auto;min-height:0;display:grid;gap:calc(7px * var(--u));
   grid-template-columns:21% 1fr 20%;grid-template-rows:1fr;
 }
 .sec{
-  border-radius:12px;padding:6px 6px 14px;display:flex;flex-direction:column;
-  gap:calc(6px * var(--u));background:#0f131c;position:relative;min-width:0;min-height:0;
+  border-radius:14px;padding:7px 7px 15px;display:flex;flex-direction:column;
+  gap:calc(6px * var(--u));min-width:0;min-height:0;position:relative;
+  background:var(--surface);border:1px solid var(--line);
 }
 .sec > .sec-name{
-  position:absolute;bottom:3px;left:0;right:0;text-align:center;
-  font-size:calc(10px * var(--u));color:#4d5468;letter-spacing:.2em;pointer-events:none;
+  position:absolute;bottom:4px;left:0;right:0;text-align:center;
+  font-size:calc(9.5px * var(--u));letter-spacing:.28em;font-weight:700;
+  color:var(--sec-ink);opacity:.75;pointer-events:none;
 }
-.sec-time{grid-column:1;grid-row:1;border:2px solid #e0362b;}
-.sec-point{grid-column:2;grid-row:1;border:2px solid #2f8f4e;}
-.sec-osae{grid-column:3;grid-row:1;border:2px solid #e0b81f;}
+.sec-time{grid-column:1;grid-row:1;--sec-ink:#c07a6d;}
+.sec-point{grid-column:2;grid-row:1;--sec-ink:#6f9c85;}
+.sec-osae{grid-column:3;grid-row:1;--sec-ink:#c2a25e;}
 
-/* ===== ボタン共通（押し込み感） ===== */
+/* ===== ボタン ===== */
 button{
-  font-family:inherit;color:#fff;border:none;border-radius:10px;
-  font-weight:900;line-height:1.15;cursor:pointer;
-  background:#39404f;
-  box-shadow:0 calc(4px * var(--u)) 0 rgba(0,0,0,.55),
-             0 calc(5px * var(--u)) 6px rgba(0,0,0,.35),
-             inset 0 1px 0 rgba(255,255,255,.18);
-  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;
-  padding:4px 2px;min-height:calc(30px * var(--u));
+  font-family:inherit;color:#fff;border:none;border-radius:11px;
+  font-weight:800;line-height:1.14;cursor:pointer;letter-spacing:.02em;
+  background:var(--k,#333b49);
+  --lip:#1c222c;
+  box-shadow:0 calc(4px * var(--u)) 0 var(--lip),
+             0 calc(6px * var(--u)) 12px rgba(0,0,0,.34),
+             inset 0 1px 0 rgba(255,255,255,.14);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+  padding:5px 3px;min-height:calc(34px * var(--u));
   transition:transform .045s ease-out, box-shadow .045s ease-out, filter .045s ease-out;
   will-change:transform;
 }
-button small{font-size:.62em;font-weight:800;opacity:.85;}
-/* :active と .press の両方で効かせる（iOS/Android/デスクトップ対策） */
+button small{font-size:.66em;font-weight:700;opacity:.72;letter-spacing:.04em;}
 button:active,
 button.press{
   transform:translateY(calc(4px * var(--u))) scale(.975);
-  box-shadow:0 0 0 rgba(0,0,0,.55),
-             inset 0 calc(3px * var(--u)) calc(7px * var(--u)) rgba(0,0,0,.55),
-             inset 0 -1px 0 rgba(255,255,255,.08);
-  filter:brightness(1.18);
+  box-shadow:0 0 0 var(--lip),
+             inset 0 calc(3px * var(--u)) calc(8px * var(--u)) rgba(0,0,0,.45),
+             inset 0 -1px 0 rgba(255,255,255,.06);
+  filter:brightness(1.16);
 }
+button:focus-visible{outline:2px solid var(--gold);outline-offset:2px;}
 button:disabled{opacity:.35;}
-.k-blue{background:#2f5fbf;}
-.k-navy{background:#243a70;}
-.k-green{background:#2f8f4e;}
-.k-red{background:#c33228;}
-.k-amber{background:#dd9a12;}
-.k-gray{background:#4a5162;}
-.k-white{background:#e7e9ef;color:#12161f;}
-.k-on{outline:3px solid #ffd15e;outline-offset:-3px;}
 
-.tb{font-size:calc(11.5px * var(--u));padding:calc(6px * var(--u)) calc(9px * var(--u));min-width:calc(58px * var(--u));}
+.k-navy {--k:#38507a; --lip:#22314b;}   /* 一本・技あり・有効 */
+.k-amber{--k:#a3792f; --lip:#66491a;}   /* 指導・反則・GS・ブザー */
+.k-blue {--k:#3a6b95; --lip:#22415c;}   /* 設定・自動ポイント */
+.k-green{--k:#2f7a61; --lip:#1c4b3b;}   /* START/STOP・負傷 */
+.k-red  {--k:#a1524a; --lip:#63312c;}   /* − ・RESET・訂正 */
+.k-gray {--k:#2f3745; --lip:#1a2029;}   /* 汎用 */
+.k-white{--k:#dde3ee; --lip:#a3abbb; color:#141922;}
+.k-gold {--k:#b8963f; --lip:#755f26;}   /* 確認待ち */
+.k-on{outline:2px solid var(--gold);outline-offset:-2px;}
+
+.tb{
+  font-size:calc(12.5px * var(--u));
+  padding:calc(7px * var(--u)) calc(10px * var(--u));
+  min-width:calc(60px * var(--u));min-height:calc(34px * var(--u));
+}
 
 /* ===== 試合時間部 ===== */
 .timeGrid{
@@ -194,18 +241,18 @@ button:disabled{opacity:.35;}
 }
 #kGs{grid-area:gs;} #kMinUp{grid-area:mup;} #kSecUp{grid-area:sup;}
 #kMinDn{grid-area:mdn;} #kSecDn{grid-area:sdn;} #kStart{grid-area:st;}
-.timeGrid button{font-size:calc(clamp(13px,1.7vw,20px) * var(--u));}
+.timeGrid button{font-size:calc(clamp(16px,2.1vw,26px) * var(--u));}
 
 /* ===== ポイント部 ===== */
 .ptTop{flex:0 0 auto;display:flex;gap:calc(5px * var(--u));align-items:stretch;}
-.ptTop button{flex:1 1 0;min-width:0;font-size:calc(clamp(10px,1.2vw,15px) * var(--u));padding:5px 2px;}
+.ptTop button{flex:1 1 0;min-width:0;font-size:calc(clamp(12px,1.45vw,19px) * var(--u));}
 .ptMain{flex:1 1 auto;display:flex;gap:calc(6px * var(--u));min-height:0;}
 .ptCol{flex:1 1 0;display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:1fr;gap:calc(5px * var(--u));min-width:0;}
 .ptCol.right{direction:rtl;}
 .ptCol.right button{direction:ltr;}
-.ptCol button{font-size:calc(clamp(13px,1.6vw,21px) * var(--u));}
-.ptMid{flex:0 0 calc(76px * var(--u));display:flex;flex-direction:column;gap:5px;justify-content:center;}
-.ptMid button{font-size:calc(12px * var(--u));padding:calc(8px * var(--u)) 2px;}
+.ptCol button{font-size:calc(clamp(16px,2vw,28px) * var(--u));}
+.ptMid{flex:0 0 calc(80px * var(--u));display:flex;flex-direction:column;gap:5px;justify-content:center;}
+.ptMid button{font-size:calc(14px * var(--u));padding:calc(9px * var(--u)) 3px;}
 
 /* ===== 抑え込み時間部 ===== */
 .osaeGrid{
@@ -223,30 +270,25 @@ button:disabled{opacity:.35;}
 #kOsSideL{grid-area:sl;} #kOsSideR{grid-area:sr;}
 #kLink{grid-area:lnk;} #kOsStart{grid-area:ost;}
 #kOsReset{grid-area:rst;} #kOsClear{grid-area:ocl;}
-.osaeGrid button{font-size:calc(clamp(11px,1.5vw,18px) * var(--u));}
+.osaeGrid button{font-size:calc(clamp(14px,1.8vw,22px) * var(--u));}
+#kLink{font-size:calc(clamp(12px,1.5vw,18px) * var(--u));}
 
 /* ===================================================================
-   縦画面（ポートレート）レイアウト
-   表示盤を小さくし、ポイント部を上段、試合時間部／抑え込み時間部を下段に
+   縦画面
    =================================================================== */
 @media (orientation:portrait){
   #board{height:21vh;min-height:112px;}
   #timeDisp{height:clamp(40px, min(9.5vh, 19vw), 110px);}
   .ptdigits{height:clamp(24px, min(6vh, 11vw), 70px);}
   #osaeDisp{height:clamp(22px, min(5.5vh, 10vw), 62px);}
-  .colorbar{max-width:calc(110px * var(--u));}
-
+  .colorbar{max-width:calc(112px * var(--u));}
   #status{margin-left:0;width:100%;white-space:normal;order:9;padding-top:2px;}
 
-  #cols{
-    grid-template-columns:1fr 1fr;
-    grid-template-rows:1.4fr 1fr;
-  }
+  #cols{grid-template-columns:1fr 1fr;grid-template-rows:1.4fr 1fr;}
   .sec-point{grid-column:1 / span 2;grid-row:1;}
   .sec-time{grid-column:1;grid-row:2;}
   .sec-osae{grid-column:2;grid-row:2;}
 
-  /* 試合時間部：横並び2段 */
   .timeGrid{
     grid-template-columns:1fr 1fr 1.25fr;
     grid-template-rows:1fr 1fr;
@@ -254,9 +296,8 @@ button:disabled{opacity:.35;}
       "mup sup gs"
       "mdn sdn st";
   }
-  .timeGrid button{font-size:calc(clamp(12px,3.4vw,20px) * var(--u));}
+  .timeGrid button{font-size:calc(clamp(15px,4vw,24px) * var(--u));}
 
-  /* 抑え込み時間部：3列 */
   .osaeGrid{
     grid-template-columns:1fr 1fr 1.15fr;
     grid-template-rows:1fr 1fr 1fr;
@@ -265,15 +306,15 @@ button:disabled{opacity:.35;}
       "sl  sr  ost"
       "ocl ocl rst";
   }
-  .osaeGrid button{font-size:calc(clamp(10px,2.9vw,17px) * var(--u));}
+  .osaeGrid button{font-size:calc(clamp(12px,3.4vw,20px) * var(--u));}
+  #kLink{font-size:calc(clamp(11px,2.7vw,16px) * var(--u));}
 
-  .ptMid{flex:0 0 calc(62px * var(--u));}
-  .ptTop button{font-size:calc(clamp(9px,2.4vw,14px) * var(--u));}
-  .ptCol button{font-size:calc(clamp(12px,3.6vw,21px) * var(--u));}
+  .ptMid{flex:0 0 calc(66px * var(--u));}
+  .ptTop button{font-size:calc(clamp(10.5px,2.8vw,17px) * var(--u));}
+  .ptCol button{font-size:calc(clamp(15px,4.2vw,26px) * var(--u));}
 }
 
-/* 高さの足りない横向き画面（スマホ横・アプリ内ビューアなど）
-   ボタン段数を減らして操作可能な大きさを確保する */
+/* 高さの足りない横向き画面 */
 @media (orientation:landscape) and (max-height:560px){
   #board{height:31vh;min-height:118px;}
   #status{flex:1 1 90px;min-width:90px;}
@@ -292,20 +333,24 @@ button:disabled{opacity:.35;}
       "sl  sr  ost"
       "ocl ocl rst";
   }
-  .sec{padding:5px 5px 12px;}
-  .tb{padding:calc(4px * var(--u)) calc(7px * var(--u));}
+  .sec{padding:5px 5px 13px;}
+  .tb{padding:calc(5px * var(--u)) calc(8px * var(--u));}
+  .tb small{display:none;}          /* 上部バーを1行に収める */
+  .winner{font-size:calc(13px * var(--u));letter-spacing:.1em;}
+  .injury{font-size:calc(14px * var(--u));}
+  .colorbar{height:calc(8px * var(--u));}
 }
-
 @media (orientation:landscape) and (max-height:430px){
   #status{display:none;}
   #board{height:34vh;min-height:112px;}
 }
 
-/* 狭い端末では表示盤の指導ラベル(S1/S2の文字)を省いて横幅を確保 */
+/* 狭い端末では指導ラベルの文字を省いて横幅を確保 */
 @media (max-width:560px){
   .slamp b{display:none;}
   .shido{gap:calc(6px * var(--u));}
-  #board{column-gap:6px;padding:6px 8px;}
+  #board{column-gap:6px;padding:7px 9px;}
+  .winner{font-size:calc(13px * var(--u));letter-spacing:.18em;}
 }
 @media (orientation:portrait) and (max-width:430px){
   #app{padding-left:5px;padding-right:5px;}
@@ -314,15 +359,18 @@ button:disabled{opacity:.35;}
 
 /* 説明オーバーレイ */
 #help{
-  position:fixed;inset:0;background:rgba(6,8,12,.96);z-index:50;
-  padding:20px;overflow-y:auto;-webkit-overflow-scrolling:touch;display:none;
+  position:fixed;inset:0;background:rgba(9,12,17,.97);z-index:50;
+  padding:22px;overflow-y:auto;-webkit-overflow-scrolling:touch;display:none;
 }
 #help.show{display:block;}
-#help .inner{max-width:820px;margin:0 auto;font-size:14px;line-height:1.9;color:#cfd3e0;}
-#help h2{font-size:18px;margin-bottom:10px;color:#ffd15e;}
-#help h3{font-size:14px;margin:16px 0 4px;color:#8fd4ff;}
-#help b{color:#fff;}
-#help .close{margin-top:20px;padding:10px 18px;font-size:14px;}
+#help .inner{max-width:780px;margin:0 auto;font-size:14.5px;line-height:1.95;color:#c3cad8;}
+#help h2{font-size:19px;margin-bottom:12px;color:var(--gold);letter-spacing:.02em;}
+#help h3{
+  font-size:12px;margin:20px 0 5px;color:#7fb5c9;
+  letter-spacing:.18em;font-weight:800;
+}
+#help b{color:var(--ink);}
+#help .close{margin-top:22px;padding:11px 20px;font-size:14px;}
 </style>
 </head>
 <body>
@@ -338,6 +386,7 @@ button:disabled{opacity:.35;}
         <span class="badge osae" id="bdOsae">抑</span>
       </div>
       <div class="colorbar" id="colL"></div>
+      <div class="winner" id="winTxtL">WINNER</div>
       <div class="injury" id="injL"><span>+</span><span>+</span></div>
     </div>
 
@@ -350,6 +399,7 @@ button:disabled{opacity:.35;}
         <span class="badge gs" id="bdGs">GS</span>
       </div>
       <div class="colorbar" id="colR"></div>
+      <div class="winner" id="winTxtR">WINNER</div>
       <div class="injury" id="injR"><span>+</span><span>+</span></div>
     </div>
 
@@ -376,8 +426,9 @@ button:disabled{opacity:.35;}
     <div id="topbar">
       <button class="tb k-gray" id="kSelect">柔道1<small>SELECT</small></button>
       <button class="tb k-blue" id="kSetting">設定<small>SETTING</small></button>
-      <button class="tb k-red" id="kClear">設定クリア<small>長押2秒</small></button>
-      <button class="tb k-navy" id="kGameReset">ゲーム<small>RESET</small></button>
+      <button class="tb k-navy" id="kGameReset">ゲームリセット<small>次の試合へ</small></button>
+      <button class="tb k-red" id="kAllClear">オールクリア<small>全消去</small></button>
+      <button class="tb k-red" id="kAllReset">オールリセット<small>初期設定に戻す</small></button>
       <button class="tb k-amber" id="kBuzz">ブザー<small>押し続け</small></button>
       <button class="tb k-gray" id="kBuzzMode">大・連続<small>音切替</small></button>
       <button class="tb k-gray" id="kUi">タブレット<small id="uiSub">表示モード</small></button>
@@ -391,12 +442,12 @@ button:disabled{opacity:.35;}
       <!-- 試合時間部 -->
       <section class="sec sec-time">
         <div class="timeGrid">
-          <button class="k-amber span2" id="kGs">GS<small>ゴールデンスコア</small></button>
+          <button class="k-amber span2" id="kGs">GS<small>GOLDEN SCORE</small></button>
           <button class="k-green" id="kMinUp">＋<small>分</small></button>
           <button class="k-green" id="kSecUp">＋<small>秒</small></button>
           <button class="k-red" id="kMinDn">－<small>分</small></button>
           <button class="k-red" id="kSecDn">－<small>秒</small></button>
-          <button class="k-green span2 bigkey" id="kStart">▶／❚❚<small>START / STOP</small></button>
+          <button class="k-green span2 bigkey" id="kStart">▶／❚❚<small>START/STOP</small></button>
         </div>
         <div class="sec-name">試合時間</div>
       </section>
@@ -483,17 +534,22 @@ button:disabled{opacity:.35;}
   ・抑え込み継続中に試合時間が0になった場合、ブザーは鳴らず、表示は設定試合時間から<b>総試合時間</b>をカウントアップ。抑え込み一本、または抑え込み解除で試合終了（ブザー）。<br>
   ・試合終了後<b>5秒以内</b>に抑え込みSTARTを押すと、試合終了と同時に抑え込みが始まったものとして再開します。
 
+  <h3>リセット系</h3>
+  ・<b>ゲームリセット</b>：得点をクリアして次の試合表示へ（設定値と選手カラーは残ります）。<br>
+  ・<b>オールクリア</b>：得点・指導・負傷・抑え込み・勝者・選手カラーをすべて消去（P1〜P5の設定値は残ります）。<br>
+  ・<b>オールリセット</b>：設定値も含めて工場出荷時の初期設定に戻します。<br>
+  ・オールクリアとオールリセットは誤操作防止のため<b>2回押し</b>です。1回押すと「もう一度押す」に変わり、5秒放置すると取り消されます。
+
   <h3>ポイント部</h3>
   ・一本 I（0～1）／技あり W（0～2）／有効 Y（0～9）／指導 S1・S2／反則 S3／負傷（0～2）。<br>
   ・<b>訂正</b>を押してからポイントボタンを押すと −1 されます。<br>
   ・<b>反則(S3)</b>：相手に自動的に一本、抑え込み表示部に「H」。<br>
-  ・<b>WIN</b>：勝者側のカラーとポイントが点滅。<br>
+  ・<b>WIN</b>：勝者側に金色で<b>WINNER</b>を表示し、カラーとポイントが点滅します。一本・反則・抑え込み一本のときは自動で勝者が決まります（WINボタンで手動変更も可能）。<br>
   ・<b>選手カラー</b>：OFF:OFF → 白:赤 → 赤:白 → 青:白 → 白:青 → OFF:OFF。
 
   <h3>設定（SETTING）</h3>
   ・「設定」を押すたびに P1 試合時間 → P2 GS時間 → P3 抑え込み1(I) → P4 抑え込み2(W) → P5 抑え込み3(Y) → 終了。<br>
   ・P1/P2 は試合時間部の 分・秒 ±、P3～P5 は 秒 ± で変更します。<br>
-  ・「設定クリア」を<b>2秒長押し</b>で工場出荷時の初期設定に戻します。<br>
   ・初期値：P1 4分／P2 99分59秒／P3 20秒／P4 10秒／P5 5秒。柔道1＝連動、柔道2＝非連動。
 
   <button class="close k-gray" id="kHelpClose">閉じる</button>
@@ -596,13 +652,13 @@ function fitBoard(){
   if (W < 60 || H < 40) return;
   /* 縦：時計 + 得点 + ラベル / 横：時計(2.41H) + 得点(1.03H)×2 + 余白 */
   var Ht = Math.min((H - 20) / 1.62, (W - 44) / 4.48);
-  Ht = Math.max(20, Math.min(220, Ht));
+  Ht = Math.max(15, Math.min(220, Ht));
   /* 実際にはみ出さなくなるまで縮める（ランプやラベルの分を自動で吸収） */
   for (var k = 0; k < 8; k++){
     applyDigitSize(Ht);
     if (bd.scrollHeight <= bd.clientHeight + 1 && bd.scrollWidth <= bd.clientWidth + 1) break;
-    if (Ht <= 20) break;
-    Ht = Math.max(20, Ht * 0.88);
+    if (Ht <= 15) break;
+    Ht = Math.max(15, Ht * 0.88);
   }
 }
 window.addEventListener("resize", fitBoard);
@@ -673,6 +729,8 @@ function ringBuzzer(sec){
   sec = sec || BUZZ_SEC;
   var m = BUZZ_MODES[S.buzzMode];
   lampBuzz(sec);
+  if (!actx) initAudio();
+  if (actx && actx.state === "suspended"){ try{ actx.resume(); }catch(e){} }
   if (!actx || m.vol <= 0) return;
   if (!m.pulse){ buzz(sec, 0, m.vol); return; }
   var t = 0;
@@ -844,9 +902,11 @@ function render(){
   el("bdOsae").classList.toggle("on", M.osaeActive);
   el("bdGs").classList.toggle("on", M.gs);
 
-  /* --- 勝者点滅 --- */
+  /* --- 勝者：WINNER（金文字）とポイント部の点滅 --- */
   el("ptL").classList.toggle("win-blink", M.winner==="L");
   el("ptR").classList.toggle("win-blink", M.winner==="R");
+  el("winTxtL").classList.toggle("on", M.winner==="L");
+  el("winTxtR").classList.toggle("on", M.winner==="R");
   if (M.winner){
     el(M.winner==="L"?"colL":"colR").classList.add("win-blink");
   }
@@ -938,42 +998,38 @@ function tick(now){
 }
 requestAnimationFrame(tick);
 
-/* 抑え込み時間からポイント／終了を判定 */
+/* 抑え込み時間からポイント／終了を判定
+   ※一本（試合終了・ブザー）の判定は、抑え込み側の選手を選んでいなくても
+     必ず働くようにしている（未選択だとポイントだけが付かない）。 */
 function evalOsae(){
-  var sec = M.osaeMs / 1000;
-  var side = M.osaeSide;
+  var sec = M.osaeMs / 1000, side = M.osaeSide;
 
   /* ゴールデンスコア中は P3・P4・P5 のうち最も短い時間で試合終了 */
   if (M.gs){
     var gmin = Math.min(S.p3, S.p4, S.p5);
     if (sec >= gmin){
-      M.osaeMs = gmin*1000;
-      if (S.link && side){
-        M.osaeGrant = (gmin===S.p3) ? "I" : (gmin===S.p4 ? "W" : "Y");
-      }
+      M.osaeMs = gmin * 1000;
+      if (S.link && side) M.osaeGrant = (gmin === S.p3) ? "I" : (gmin === S.p4 ? "W" : "Y");
+      if (side) M.winner = side;
       stopOsae();
       endMatch(true);
     }
     return;
   }
 
-  if (!S.link){
-    /* 非連動：一本の時間で自動停止（ブザー）。ポイントは手動 */
-    if (sec >= S.p3){
-      M.osaeMs = S.p3*1000;
-      stopOsae();
-      endMatch(true);
-    }
-    return;
-  }
+  /* 連動時は経過秒に応じてポイントを更新（P5→有効 / P4→技あり） */
+  if (S.link && side) M.osaeGrant = grantFor(sec, side);
 
-  /* 連動：P5→有効、P4→技あり（技あり保持者は合わせ技一本）、P3→一本 */
-  var g = grantFor(sec, side);
-  if (g !== M.osaeGrant) M.osaeGrant = g;
-  if (g === "I" || g === "AWASE"){
-    M.osaeMs = Math.min(M.osaeMs, (g==="AWASE" ? S.p4 : S.p3) * 1000);
+  /* 一本になる時間。技ありを持っている選手は P4 で合わせ技一本 */
+  var limit = S.p3;
+  if (S.link && side && M[side].w >= 1 && S.p4 < S.p3) limit = S.p4;
+
+  if (sec >= limit){
+    M.osaeMs = limit * 1000;
+    if (S.link && side) M.osaeGrant = grantFor(limit, side);
+    if (side) M.winner = side;
     stopOsae();
-    endMatch(true);
+    endMatch(true);          // ブザー2.5秒
   }
 }
 function grantFor(sec, side){
@@ -1107,7 +1163,8 @@ function pointPress(side, key){
     p.w = minus ? Math.max(0, p.w-1) : (p.w >= 2 ? 0 : p.w+1);
   } else if (key === "i"){
     p.i = minus ? 0 : (p.i ? 0 : 1);
-    if (p.i === 1) endMatch(false);            // 一本＝試合終了（ブザーは鳴らさない）
+    if (p.i === 1){ M.winner = side; endMatch(false); }   // 一本＝試合終了（ブザーは鳴らさない）
+    else if (M.winner === side) M.winner = null;
   } else if (key === "s1"){
     p.s1 = minus ? false : !p.s1;
   } else if (key === "s2"){
@@ -1119,6 +1176,7 @@ function pointPress(side, key){
     } else {
       p.s3 = true; M.hansoku = side;
       M[side==="L"?"R":"L"].i = 1;
+      M.winner = (side === "L") ? "R" : "L";
       endMatch(false);
     }
   }
@@ -1155,6 +1213,54 @@ press("kGameReset", function(){
   newMatch();
   releaseWake();
 });
+
+/* オールクリア：得点・指導・負傷・抑え込み・勝者・選手カラーをすべて消去
+   （P1〜P5などの設定値は残す）
+   オールリセット：設定値も含めて工場出荷時の初期設定に戻す
+   どちらも誤操作防止のため2回押しで実行する */
+function allClear(){
+  newMatch();
+  S.colorIdx = 0;
+  setMode = 0;
+  releaseWake();
+}
+function allReset(){
+  S = defaults(S.event);
+  newMatch();
+  setMode = 0;
+  releaseWake();
+}
+(function(){
+  var armed = null, armTimer = null;
+  function label(b, txt, sub){
+    b.firstChild.nodeValue = txt;
+    b.querySelector("small").textContent = sub;
+  }
+  function disarm(){
+    if (!armed) return;
+    label(armed.b, armed.txt, armed.sub);
+    armed.b.classList.remove("k-gold");
+    armed.b.classList.add("k-red");
+    armed = null;
+    clearTimeout(armTimer);
+  }
+  function bind(id, txt, sub, run){
+    var b = el(id);
+    b.addEventListener("click", function(){
+      initAudio();
+      if (setMode > 0) return;
+      if (armed && armed.b === b){ disarm(); run(); render(); return; }
+      disarm();
+      armed = {b:b, txt:txt, sub:sub};
+      label(b, "もう一度押す", "取り消しは5秒待つ");
+      b.classList.remove("k-red"); b.classList.add("k-gold");
+      armTimer = setTimeout(disarm, 5000);
+      render();
+    });
+  }
+  bind("kAllClear", "オールクリア", "全消去", allClear);
+  bind("kAllReset", "オールリセット", "初期設定に戻す", allReset);
+})();
 press("kFull", function(){
   var d = document.documentElement;
   if (!document.fullscreenElement){ (d.requestFullscreen||d.webkitRequestFullscreen||function(){}).call(d); }
@@ -1170,19 +1276,6 @@ press("kHelpClose", function(){ el("help").classList.remove("show"); });
   b.addEventListener("pointerdown", function(e){ e.preventDefault(); holdBuzzStart(); });
   ["pointerup","pointercancel","pointerleave"].forEach(function(ev){
     b.addEventListener(ev, holdBuzzStop);
-  });
-})();
-
-/* 設定クリア：2秒長押しで初期設定に戻す */
-(function(){
-  var b = el("kClear"), t = null;
-  b.addEventListener("pointerdown", function(){
-    t = setTimeout(function(){
-      var ev = S.event; S = defaults(ev); newMatch(); setMode = 0; render();
-    }, 2000);
-  });
-  ["pointerup","pointercancel","pointerleave"].forEach(function(ev){
-    b.addEventListener(ev, function(){ clearTimeout(t); });
   });
 })();
 
