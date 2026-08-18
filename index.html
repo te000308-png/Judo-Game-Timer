@@ -627,6 +627,7 @@ button:disabled{opacity:.35;}
   ・試合時間は<b>3桁表示</b>（3:00）。10分以上のときだけ十の位が出ます。<br>
   ・<b>抑え込み時間</b>は試合時間のすぐ右に大きく表示します。<br>
   ・得点を入力すると、その選手のポイント表示が<b>3回点滅</b>して入力を知らせます。<br>
+  ・<b>抑え込み時間と得点は 0 のときは表示しません</b>（上位桁の 0 も出しません）。試合時間だけは 0 も表示します。<br>
   ・勝者が決まると中央に金色の<b>WINNER</b>バナーが出て、矢印が勝者側を指します。
 
   <h3>試合時間部</h3>
@@ -1013,26 +1014,27 @@ function render(){
   setDigit(tD[2], ss.charAt(0)); setDigit(tD[3], ss.charAt(1));
   if ((four ? 4 : 3) !== digitCount){ digitCount = four ? 4 : 3; fitBoard(); }
 
-  /* --- 抑え込み時間 / 反則H --- */
+  /* --- 抑え込み時間 / 反則H ---
+     試合時間以外は 0 のとき何も表示しない（上位桁の 0 も出さない） --- */
   if (M.hansoku){
     setDigit(oD[0]," "); setDigit(oD[1],"H");
-    el("osaeDisp").classList.remove("green");
   } else if (setMode >= 3){
-    var pv = fmt2(setMode===3 ? S.p3 : (setMode===4 ? S.p4 : S.p5));
-    setDigit(oD[0], pv.charAt(0)); setDigit(oD[1], pv.charAt(1));
+    var pv = setMode===3 ? S.p3 : (setMode===4 ? S.p4 : S.p5);
+    setDigit(oD[0], pv >= 10 ? String(Math.floor(pv/10)) : " ");
+    setDigit(oD[1], pv > 0 ? String(pv % 10) : " ");
   } else {
-    var os = fmt2(Math.floor(M.osaeMs/1000));
-    if (!M.osaeActive && M.osaeMs === 0){ setDigit(oD[0]," "); setDigit(oD[1],"0"); }
-    else { setDigit(oD[0], os.charAt(0)); setDigit(oD[1], os.charAt(1)); }
+    var osec = Math.floor(M.osaeMs/1000);
+    setDigit(oD[0], osec >= 10 ? String(Math.floor(osec/10)) : " ");
+    setDigit(oD[1], osec > 0 ? String(osec % 10) : " ");
   }
 
-  /* --- ポイント --- */
+  /* --- ポイント（0 は表示しない） --- */
   ["L","R"].forEach(function(k){
     var p = effective(k);
     var d = pD[k];
-    if (p.i > 0) setDigit(d[0], String(p.i)); else { setDigit(d[0]," "); }
-    if (p.w > 0 || p.i > 0) setDigit(d[1], String(p.w)); else setDigit(d[1]," ");
-    setDigit(d[2], String(p.y));
+    setDigit(d[0], p.i > 0 ? String(p.i) : " ");
+    setDigit(d[1], p.w > 0 ? String(p.w) : " ");
+    setDigit(d[2], p.y > 0 ? String(p.y) : " ");
     el(k==="L"?"sL1":"sR1").classList.toggle("on", p.s1);
     el(k==="L"?"sL2":"sR2").classList.toggle("on", p.s2);
     var inj = el(k==="L"?"injL":"injR").children;
