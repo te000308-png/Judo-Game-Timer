@@ -1,0 +1,1061 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="theme-color" content="#0b0b0d">
+<title>柔道試合タイマー</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;}
+html{background:#0b0b0d;}
+body{
+  background:#0b0b0d;color:#f2f2f5;
+  font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",system-ui,sans-serif;
+  overflow:hidden;touch-action:manipulation;
+  -webkit-user-select:none;user-select:none;
+}
+
+/* ===== 全体レイアウト（iPad 横向き前提：上＝表示盤／下＝操作パネル） ===== */
+#app{
+  height:100%;display:flex;flex-direction:column;gap:8px;
+  padding:calc(env(safe-area-inset-top) + 6px) 10px calc(env(safe-area-inset-bottom) + 6px);
+}
+
+/* ===================================================================
+   表示盤（前面パネル相当）
+   =================================================================== */
+#board{
+  flex:0 0 auto;height:34vh;min-height:180px;
+  background:linear-gradient(#1b2a4a,#0d1526 60%,#070b14);
+  border:2px solid #2f4877;border-radius:14px;
+  box-shadow:0 8px 22px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.12);
+  padding:8px 14px;position:relative;
+  display:grid;
+  grid-template-columns:1fr auto 1fr;
+  grid-template-rows:auto 1fr auto;
+  align-items:center;column-gap:14px;
+}
+.b-side{display:flex;flex-direction:column;gap:4px;min-width:0;}
+.b-side.r{align-items:flex-end;}
+
+/* 指導ランプ S1/S2 */
+.shido{display:flex;gap:10px;align-items:center;}
+.b-side.r .shido{flex-direction:row-reverse;}
+.slamp{display:flex;align-items:center;gap:4px;font-size:12px;font-weight:800;color:#7d8296;}
+.slamp i{
+  width:14px;height:14px;border-radius:50%;background:#2a2f3d;
+  box-shadow:inset 0 0 3px #000;display:block;
+}
+.slamp.on i{background:#ffa412;box-shadow:0 0 10px rgba(255,164,18,.9);}
+.slamp.on{color:#ffc35e;}
+
+/* 選手カラーバー */
+.colorbar{
+  width:100%;max-width:150px;height:12px;border-radius:3px;
+  background:#20242f;box-shadow:inset 0 0 4px #000;
+}
+.colorbar.w{background:#f2f2f5;box-shadow:0 0 10px rgba(255,255,255,.5);}
+.colorbar.b{background:#1f6bff;box-shadow:0 0 10px rgba(31,107,255,.7);}
+.colorbar.r{background:#ff2a1c;box-shadow:0 0 10px rgba(255,42,28,.7);}
+
+/* 負傷（＋＋） */
+.injury{display:flex;gap:6px;font-size:20px;font-weight:900;color:#1b2233;line-height:1;}
+.injury span.on{color:#22e06a;text-shadow:0 0 10px rgba(34,224,106,.8);}
+
+/* 抑え込み／ゴールデンスコア表示 */
+.badge{
+  font-size:12px;font-weight:900;letter-spacing:.04em;padding:2px 8px;border-radius:4px;
+  background:#20242f;color:#454b5e;
+}
+.badge.on.osae{background:#ff2a1c;color:#fff;box-shadow:0 0 12px rgba(255,42,28,.8);}
+.badge.on.gs{background:#f2f2f5;color:#0d1526;box-shadow:0 0 12px rgba(255,255,255,.7);}
+
+/* 7セグ */
+.seg{fill:rgba(255,255,255,.06);}
+.seg.on{fill:var(--c);filter:drop-shadow(0 0 6px var(--g));}
+.dg{display:block;height:100%;width:auto;}
+.dg.hide{visibility:hidden;}
+
+#timeRow{grid-column:2;grid-row:1 / span 2;display:flex;align-items:center;justify-content:center;}
+#timeDisp{display:flex;align-items:center;height:14vh;min-height:70px;--c:#ffffff;--g:rgba(255,255,255,.55);}
+
+#buzzLamp{
+  width:14px;height:14px;border-radius:50%;background:#2a2f3d;box-shadow:inset 0 0 3px #000;
+  flex:0 0 auto;
+}
+#buzzLamp.on{background:#ffa412;box-shadow:0 0 14px rgba(255,164,18,1);}
+
+/* 得点行 */
+.ptrow{display:flex;flex-direction:column;align-items:center;gap:2px;}
+.ptdigits{display:flex;gap:4px;height:9vh;min-height:46px;--c:#ff9a1f;--g:rgba(255,154,31,.6);}
+.ptlabel{display:flex;gap:4px;font-size:11px;font-weight:900;color:#6d7488;letter-spacing:.35em;}
+#ptL{grid-column:1;grid-row:3;justify-self:start;}
+#ptR{grid-column:3;grid-row:3;justify-self:end;}
+#osaeWrap{grid-column:2;grid-row:3;display:flex;flex-direction:column;align-items:center;gap:2px;}
+#osaeDisp{display:flex;gap:4px;height:8vh;min-height:40px;--c:#ff2a1c;--g:rgba(255,42,28,.6);}
+#osaeDisp.green{--c:#22e06a;--g:rgba(34,224,106,.6);}
+.hint{font-size:10px;color:#5b6178;letter-spacing:.15em;}
+
+/* 勝者点滅 */
+@keyframes blink{0%,49%{opacity:1}50%,100%{opacity:.15}}
+.win-blink{animation:blink .6s steps(1,end) infinite;}
+
+/* ===================================================================
+   操作パネル
+   =================================================================== */
+#panel{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;gap:6px;}
+
+#topbar{
+  flex:0 0 auto;display:flex;gap:6px;align-items:center;
+  background:#151821;border:1px solid #2a2f3d;border-radius:10px;padding:5px 8px;
+}
+#status{
+  margin-left:auto;font-size:12px;font-weight:800;color:#8b91a6;
+  font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+#status b{color:#ffd15e;}
+
+#cols{flex:1 1 auto;min-height:0;display:flex;gap:8px;}
+.sec{
+  border-radius:12px;padding:6px 6px 14px;display:flex;flex-direction:column;gap:6px;
+  background:#0f131c;position:relative;min-width:0;
+}
+.sec > .sec-name{
+  position:absolute;bottom:3px;left:0;right:0;text-align:center;
+  font-size:10px;color:#4d5468;letter-spacing:.2em;pointer-events:none;
+}
+.sec-time{flex:0 0 21%;border:2px solid #e0362b;}
+.sec-point{flex:1 1 auto;border:2px solid #2f8f4e;}
+.sec-osae{flex:0 0 20%;border:2px solid #e0b81f;}
+
+/* ボタン共通 */
+button{
+  font-family:inherit;color:#fff;border:none;border-radius:10px;
+  font-weight:900;line-height:1.15;cursor:pointer;
+  background:#39404f;box-shadow:0 3px 0 rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.16);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;
+  padding:4px 2px;min-height:0;
+}
+button small{font-size:.62em;font-weight:800;opacity:.85;}
+button.press{transform:translateY(3px);box-shadow:0 0 0 rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.16);}
+button:disabled{opacity:.35;}
+.k-blue{background:#2f5fbf;}
+.k-navy{background:#243a70;}
+.k-green{background:#2f8f4e;}
+.k-red{background:#c33228;}
+.k-amber{background:#dd9a12;}
+.k-gray{background:#4a5162;}
+.k-white{background:#e7e9ef;color:#12161f;}
+.k-on{outline:3px solid #ffd15e;outline-offset:-3px;}
+
+.tb{font-size:12px;padding:6px 10px;min-width:64px;}
+
+/* 試合時間部 */
+.timeGrid{flex:1 1 auto;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:auto 1fr 1fr auto;gap:5px;min-height:0;}
+.timeGrid .span2{grid-column:1 / span 2;}
+.timeGrid button{font-size:clamp(13px,1.7vw,20px);}
+.bigkey{font-size:clamp(14px,1.7vw,20px) !important;}
+
+/* ポイント部 */
+.ptTop{flex:0 0 auto;display:flex;gap:5px;align-items:stretch;}
+.ptTop button{flex:1 1 0;font-size:clamp(11px,1.2vw,15px);padding:5px 2px;}
+.ptMain{flex:1 1 auto;display:flex;gap:6px;min-height:0;}
+.ptCol{flex:1 1 0;display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:1fr;gap:5px;min-width:0;}
+.ptCol.right{direction:rtl;}
+.ptCol.right button{direction:ltr;}
+.ptCol button{font-size:clamp(13px,1.6vw,21px);}
+.ptMid{flex:0 0 84px;display:flex;flex-direction:column;gap:5px;justify-content:center;}
+.ptMid button{font-size:12px;padding:8px 2px;}
+
+/* 抑え込み時間部 */
+.osaeGrid{flex:1 1 auto;display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:1fr;gap:5px;min-height:0;}
+.osaeGrid .span2{grid-column:1 / span 2;}
+.osaeGrid button{font-size:clamp(12px,1.5vw,18px);}
+
+/* 説明オーバーレイ */
+#help{
+  position:fixed;inset:0;background:rgba(6,8,12,.94);z-index:50;
+  padding:20px;overflow-y:auto;-webkit-overflow-scrolling:touch;display:none;
+}
+#help.show{display:block;}
+#help .inner{max-width:820px;margin:0 auto;font-size:14px;line-height:1.9;color:#cfd3e0;}
+#help h2{font-size:18px;margin-bottom:10px;color:#ffd15e;}
+#help h3{font-size:14px;margin:16px 0 4px;color:#8fd4ff;}
+#help b{color:#fff;}
+#help .close{margin-top:20px;padding:10px 18px;font-size:14px;}
+
+/* 横向き推奨の注意（縦向き時） */
+#rotate{
+  position:fixed;inset:0;background:#0b0b0d;z-index:60;display:none;
+  align-items:center;justify-content:center;text-align:center;padding:30px;
+  font-size:16px;font-weight:800;color:#8b91a6;line-height:2;
+}
+@media (orientation:portrait) and (max-width:900px){ #rotate{display:flex;} }
+</style>
+</head>
+<body>
+
+<div id="app">
+
+  <!-- ============ 表示盤 ============ -->
+  <div id="board">
+    <div class="b-side l">
+      <div class="shido">
+        <span class="slamp" id="sL2"><i></i>S2</span>
+        <span class="slamp" id="sL1"><i></i>S1</span>
+        <span class="badge osae" id="bdOsae">抑</span>
+      </div>
+      <div class="colorbar" id="colL"></div>
+      <div class="injury" id="injL"><span>+</span><span>+</span></div>
+    </div>
+
+    <div id="timeRow"><div id="timeDisp"></div></div>
+
+    <div class="b-side r">
+      <div class="shido">
+        <span class="slamp" id="sR2"><i></i>S2</span>
+        <span class="slamp" id="sR1"><i></i>S1</span>
+        <span class="badge gs" id="bdGs">GS</span>
+      </div>
+      <div class="colorbar" id="colR"></div>
+      <div class="injury" id="injR"><span>+</span><span>+</span></div>
+    </div>
+
+    <div class="ptrow" id="ptL">
+      <div class="ptdigits" id="ptDispL"></div>
+      <div class="ptlabel">I W Y</div>
+    </div>
+
+    <div id="osaeWrap">
+      <div id="buzzLamp"></div>
+      <div id="osaeDisp"></div>
+      <div class="hint">抑え込み / H</div>
+    </div>
+
+    <div class="ptrow" id="ptR">
+      <div class="ptdigits" id="ptDispR"></div>
+      <div class="ptlabel">I W Y</div>
+    </div>
+  </div>
+
+  <!-- ============ 操作パネル ============ -->
+  <div id="panel">
+
+    <div id="topbar">
+      <button class="tb k-gray" id="kSelect">柔道1<small>SELECT</small></button>
+      <button class="tb k-blue" id="kSetting">設定<small>SETTING</small></button>
+      <button class="tb k-red" id="kClear">設定クリア<small>長押2秒</small></button>
+      <button class="tb k-navy" id="kGameReset">ゲーム<small>RESET</small></button>
+      <button class="tb k-amber" id="kBuzz">ブザー<small>押し続け</small></button>
+      <button class="tb k-gray" id="kBuzzMode">大・連続<small>音切替</small></button>
+      <button class="tb k-gray" id="kFull">全画面</button>
+      <button class="tb k-gray" id="kHelp">説明</button>
+      <div id="status"></div>
+    </div>
+
+    <div id="cols">
+
+      <!-- 試合時間部 -->
+      <section class="sec sec-time">
+        <div class="timeGrid">
+          <button class="k-amber span2" id="kGs">GS<small>ゴールデンスコア</small></button>
+          <button class="k-green" id="kMinUp">＋<small>分</small></button>
+          <button class="k-green" id="kSecUp">＋<small>秒</small></button>
+          <button class="k-red" id="kMinDn">－<small>分</small></button>
+          <button class="k-red" id="kSecDn">－<small>秒</small></button>
+          <button class="k-green span2 bigkey" id="kStart">▶／❚❚<small>START / STOP</small></button>
+        </div>
+        <div class="sec-name">試合時間</div>
+      </section>
+
+      <!-- ポイント部 -->
+      <section class="sec sec-point">
+        <div class="ptTop">
+          <button class="k-navy" id="kWinL">WIN 左</button>
+          <button class="k-green" id="kInjL">負傷 ＋ 左</button>
+          <button class="k-amber" id="kColor">選手カラー<small id="colorTxt">OFF : OFF</small></button>
+          <button class="k-green" id="kInjR">負傷 ＋ 右</button>
+          <button class="k-navy" id="kWinR">WIN 右</button>
+        </div>
+        <div class="ptMain">
+          <div class="ptCol left">
+            <button class="k-navy" data-p="L,i">一本<small>I</small></button>
+            <button class="k-amber" data-p="L,s3">反則<small>S3</small></button>
+            <button class="k-navy" data-p="L,w">技あり<small>W</small></button>
+            <button class="k-amber" data-p="L,s2">指導2<small>S2</small></button>
+            <button class="k-navy" data-p="L,y">有効<small>Y</small></button>
+            <button class="k-amber" data-p="L,s1">指導1<small>S1</small></button>
+          </div>
+          <div class="ptMid">
+            <button class="k-red" id="kFix">訂正<small>−1</small></button>
+          </div>
+          <div class="ptCol right">
+            <button class="k-navy" data-p="R,i">一本<small>I</small></button>
+            <button class="k-amber" data-p="R,s3">反則<small>S3</small></button>
+            <button class="k-navy" data-p="R,w">技あり<small>W</small></button>
+            <button class="k-amber" data-p="R,s2">指導2<small>S2</small></button>
+            <button class="k-navy" data-p="R,y">有効<small>Y</small></button>
+            <button class="k-amber" data-p="R,s1">指導1<small>S1</small></button>
+          </div>
+        </div>
+        <div class="sec-name">ポイント</div>
+      </section>
+
+      <!-- 抑え込み時間部 -->
+      <section class="sec sec-osae">
+        <div class="osaeGrid">
+          <button class="k-green" id="kOsSecUp">＋<small>秒</small></button>
+          <button class="k-red" id="kOsSecDn">－<small>秒</small></button>
+          <button class="k-white" id="kOsSideL">◀ 白/左<small>抑え込み側</small></button>
+          <button class="k-white" id="kOsSideR">青/右 ▶<small>抑え込み側</small></button>
+          <button class="k-blue span2" id="kLink">自動ポイント<small id="linkTxt">連動</small></button>
+          <button class="k-green" id="kOsStart">▶／❚❚<small>START/STOP</small></button>
+          <button class="k-red" id="kOsReset">RESET<small>&amp; START</small></button>
+          <button class="k-gray span2" id="kOsClear">抑え込みリセット<small>解除・0に戻す</small></button>
+        </div>
+        <div class="sec-name">抑え込み時間</div>
+      </section>
+
+    </div>
+  </div>
+</div>
+
+<div id="rotate">iPad を <b>横向き</b> にしてお使いください。</div>
+
+<div id="help"><div class="inner">
+  <h2>柔道試合タイマー（JT-801 相当）操作メモ</h2>
+
+  <h3>ブザー</h3>
+  ・<b>試合開始・「待て」からの再開ではブザーは鳴りません。</b><br>
+  ・試合時間終了：<b>2.5秒</b>／抑え込み時間経過（一本）：<b>2.5秒</b>。<br>
+  ・「ブザー」ボタンは押している間だけ鳴ります。<br>
+  ・「音切替」で 大・連続 → 大・断続 → 消音 → 小・連続 → 小・断続 の5パターン。
+
+  <h3>試合時間部</h3>
+  ・<b>START/STOP</b>：試合時間の開始／停止（＝「待て」）。停止中に<b>分・秒 ±</b>で時間訂正。<br>
+  ・<b>GS</b>：ゴールデンスコアへ。0からカウントアップ（上限＝P2）。もう一度押すと解除。
+
+  <h3>抑え込み時間部</h3>
+  ・<b>START/STOP</b>：抑え込み開始／停止。<b>RESET&amp;START</b>：0に戻してすぐ再スタート。<br>
+  ・<b>抑え込みリセット</b>：抑え込み解除（表示盤の「抑」消灯・得点確定）。<br>
+  ・<b>◀ ▶</b>：抑え込み側の選手（カラーが点滅）。<br>
+  ・<b>自動ポイント（連動）</b>：P5秒→有効、P4秒→技あり、P3秒→一本。<br>
+  　技ありを持っている選手はP4秒で<b>合わせ技一本</b>。<br>
+  ・停止中に<b>秒 ±</b>で抑え込み時間を訂正すると、連動時はポイントも自動で訂正されます。<br>
+  ・ゴールデンスコア中の抑え込みは、P3・P4・P5のうち<b>最も短い時間</b>で試合終了。
+
+  <h3>試合時間終了と抑え込み</h3>
+  ・抑え込み継続中に試合時間が0になった場合、ブザーは鳴らず、表示は設定試合時間から<b>総試合時間</b>をカウントアップ。抑え込み一本、または抑え込み解除で試合終了（ブザー）。<br>
+  ・試合終了後<b>5秒以内</b>に抑え込みSTARTを押すと、試合終了と同時に抑え込みが始まったものとして再開します。
+
+  <h3>ポイント部</h3>
+  ・一本 I（0～1）／技あり W（0～2）／有効 Y（0～9）／指導 S1・S2／反則 S3／負傷（0～2）。<br>
+  ・<b>訂正</b>を押してからポイントボタンを押すと −1 されます。<br>
+  ・<b>反則(S3)</b>：相手に自動的に一本、抑え込み表示部に「H」。<br>
+  ・<b>WIN</b>：勝者側のカラーとポイントが点滅。<br>
+  ・<b>選手カラー</b>：OFF:OFF → 白:赤 → 赤:白 → 青:白 → 白:青 → OFF:OFF。
+
+  <h3>設定（SETTING）</h3>
+  ・「設定」を押すたびに P1 試合時間 → P2 GS時間 → P3 抑え込み1(I) → P4 抑え込み2(W) → P5 抑え込み3(Y) → 終了。<br>
+  ・P1/P2 は試合時間部の 分・秒 ±、P3～P5 は 秒 ± で変更します。<br>
+  ・「設定クリア」を<b>2秒長押し</b>で工場出荷時の初期設定に戻します。<br>
+  ・初期値：P1 4分／P2 99分59秒／P3 20秒／P4 10秒／P5 5秒。柔道1＝連動、柔道2＝非連動。
+
+  <button class="close k-gray" id="kHelpClose">閉じる</button>
+</div></div>
+
+<script>
+"use strict";
+
+/* ===================================================================
+   1. 7セグメント描画
+   =================================================================== */
+var SEGMAP = {
+  "0":"abcdef","1":"bc","2":"abged","3":"abgcd","4":"fgbc","5":"afgcd",
+  "6":"afgedc","7":"abc","8":"abcdefg","9":"abcdfg",
+  "H":"bcefg","P":"abefg","G":"acdef","-":"g"," ":""
+};
+var T = 18, G = 3.5, XL = 14, XR = 86, YT = 14, YM = 90, YB = 166;
+function hseg(x1,x2,y){var t=T/2;x1+=G;x2-=G;
+  return [x1+","+y,(x1+t)+","+(y-t),(x2-t)+","+(y-t),x2+","+y,(x2-t)+","+(y+t),(x1+t)+","+(y+t)].join(" ");}
+function vseg(x,y1,y2){var t=T/2;y1+=G;y2-=G;
+  return [x+","+y1,(x+t)+","+(y1+t),(x+t)+","+(y2-t),x+","+y2,(x-t)+","+(y2-t),(x-t)+","+(y1+t)].join(" ");}
+var SEGPTS = {
+  a:hseg(XL,XR,YT), g:hseg(XL,XR,YM), d:hseg(XL,XR,YB),
+  f:vseg(XL,YT,YM), b:vseg(XR,YT,YM), e:vseg(XL,YM,YB), c:vseg(XR,YM,YB)
+};
+var NS = "http://www.w3.org/2000/svg", KEYS = ["a","b","c","d","e","f","g"];
+
+function makeDigit(){
+  var svg = document.createElementNS(NS,"svg");
+  svg.setAttribute("viewBox","0 0 100 180");
+  svg.setAttribute("class","dg");
+  var map = {};
+  KEYS.forEach(function(k){
+    var p = document.createElementNS(NS,"polygon");
+    p.setAttribute("points",SEGPTS[k]); p.setAttribute("class","seg");
+    svg.appendChild(p); map[k]=p;
+  });
+  svg._segs = map;
+  return svg;
+}
+function setDigit(svg,ch){
+  var on = SEGMAP[ch];
+  if (on === undefined) on = "";
+  svg.classList.remove("hide");
+  KEYS.forEach(function(k){ svg._segs[k].classList.toggle("on", on.indexOf(k)>=0); });
+}
+function hideDigit(svg){ KEYS.forEach(function(k){ svg._segs[k].classList.remove("on"); }); }
+function makeColon(){
+  var svg = document.createElementNS(NS,"svg");
+  svg.setAttribute("viewBox","0 0 34 180"); svg.setAttribute("class","dg");
+  [62,122].forEach(function(y){
+    var c = document.createElementNS(NS,"circle");
+    c.setAttribute("cx",17); c.setAttribute("cy",y); c.setAttribute("r",10);
+    c.setAttribute("class","seg on"); svg.appendChild(c);
+  });
+  return svg;
+}
+function el(id){ return document.getElementById(id); }
+
+/* 表示盤の数字を組み立て */
+var tD = [makeDigit(),makeDigit(),makeDigit(),makeDigit()];
+(function(){
+  var d = el("timeDisp");
+  d.appendChild(tD[0]); d.appendChild(tD[1]); d.appendChild(makeColon());
+  d.appendChild(tD[2]); d.appendChild(tD[3]);
+})();
+var oD = [makeDigit(),makeDigit()];
+oD.forEach(function(s){ el("osaeDisp").appendChild(s); });
+var pD = { L:[makeDigit(),makeDigit(),makeDigit()], R:[makeDigit(),makeDigit(),makeDigit()] };
+pD.L.forEach(function(s){ el("ptDispL").appendChild(s); });
+pD.R.forEach(function(s){ el("ptDispR").appendChild(s); });
+
+/* ===================================================================
+   2. ブザー音（randori-programtimer の実機解析データを流用）
+   基本63.85Hzの41〜151倍音だけが鳴る実機ブザーの倍音構成を
+   PeriodicWave にそのまま流し込んで再現する。[次数, 振幅, 位相]
+   =================================================================== */
+var actx = null;
+function initAudio(){
+  if (actx){ if (actx.state === "suspended") actx.resume(); return; }
+  var AC = window.AudioContext || window.webkitAudioContext;
+  if (!AC) return;
+  actx = new AC();
+  var o = actx.createOscillator(), g = actx.createGain();
+  g.gain.value = 0.0001; o.connect(g); g.connect(actx.destination);
+  o.start(); o.stop(actx.currentTime + 0.03);
+}
+var BUZZ_F0 = 63.85;
+var BUZZ = [[41,0.055,5.404],[43,0.189,6.047],[44,0.645,2.559],[45,0.564,5.649],
+            [46,0.047,6.035],[47,0.352,1.179],[48,0.087,4.436],[49,0.518,1.514],
+            [50,1.000,5.950],[51,0.240,1.159],[52,0.036,2.848],[53,0.126,3.220],
+            [55,0.121,4.941],[57,0.043,5.918],[59,0.026,3.588],[87,0.066,2.685],
+            [88,0.030,4.741],[95,0.043,1.032],[97,0.034,1.092],[100,0.038,0.624],
+            [101,0.041,5.012],[149,0.025,1.378],[150,0.043,4.237],[151,0.037,3.478]];
+var buzzWave = null;
+function makeBuzzWave(){
+  var N = 152, re = new Float32Array(N), im = new Float32Array(N);
+  for (var i=0;i<BUZZ.length;i++){
+    var n = BUZZ[i][0], a = BUZZ[i][1], ph = BUZZ[i][2];
+    re[n] = a*Math.cos(ph); im[n] = a*Math.sin(ph);
+  }
+  return actx.createPeriodicWave(re,im);
+}
+function buzz(dur, when, vol){
+  if (!actx) return;
+  when = when || 0; vol = vol || 0.5;
+  var t0 = actx.currentTime + when, t1 = t0 + dur;
+  if (!buzzWave) buzzWave = makeBuzzWave();
+  var g = actx.createGain();
+  g.gain.setValueAtTime(0, t0);
+  g.gain.linearRampToValueAtTime(vol, t0 + 0.012);   // 実機の立ち上がりは約12ms
+  g.gain.setValueAtTime(vol, Math.max(t0+0.013, t1 - 0.03));
+  g.gain.linearRampToValueAtTime(0, t1);             // 切れ際は約30ms
+  var o = actx.createOscillator();
+  o.setPeriodicWave(buzzWave); o.frequency.value = BUZZ_F0;
+  o.connect(g); g.connect(actx.destination);
+  o.start(t0); o.stop(t1 + 0.01);
+}
+
+/* 音量／断続パターン：大連続・大断続・消音・小連続・小断続 */
+var BUZZ_MODES = [
+  {name:"大・連続", vol:0.60, pulse:false},
+  {name:"大・断続", vol:0.60, pulse:true },
+  {name:"消音",     vol:0,    pulse:false},
+  {name:"小・連続", vol:0.22, pulse:false},
+  {name:"小・断続", vol:0.22, pulse:true }
+];
+var BUZZ_ON = 0.22, BUZZ_OFF = 0.13;   // 断続時の鳴り／休みの長さ
+
+/* 試合終了・抑え込み一本ともに 2.5 秒 */
+var BUZZ_SEC = 2.5;
+
+function ringBuzzer(sec){
+  sec = sec || BUZZ_SEC;
+  var m = BUZZ_MODES[S.buzzMode];
+  lampBuzz(sec);
+  if (!actx || m.vol <= 0) return;
+  if (!m.pulse){ buzz(sec, 0, m.vol); return; }
+  var t = 0;
+  while (t < sec - 0.01){
+    buzz(Math.min(BUZZ_ON, sec - t), t, m.vol);
+    t += BUZZ_ON + BUZZ_OFF;
+  }
+}
+/* 表示盤のブザーランプ（柔道のみ点灯） */
+var lampTimer = null;
+function lampBuzz(sec){
+  el("buzzLamp").classList.add("on");
+  clearTimeout(lampTimer);
+  lampTimer = setTimeout(function(){ el("buzzLamp").classList.remove("on"); }, sec*1000);
+}
+/* ブザーボタン：押している間だけ鳴る */
+var holdOsc = null, holdGain = null;
+function holdBuzzStart(){
+  initAudio();
+  var m = BUZZ_MODES[S.buzzMode];
+  if (!actx || m.vol <= 0 || holdOsc) return;
+  if (!buzzWave) buzzWave = makeBuzzWave();
+  holdGain = actx.createGain();
+  holdGain.gain.setValueAtTime(0, actx.currentTime);
+  holdGain.gain.linearRampToValueAtTime(m.vol, actx.currentTime + 0.012);
+  holdOsc = actx.createOscillator();
+  holdOsc.setPeriodicWave(buzzWave); holdOsc.frequency.value = BUZZ_F0;
+  holdOsc.connect(holdGain); holdGain.connect(actx.destination);
+  holdOsc.start();
+  el("buzzLamp").classList.add("on");
+}
+function holdBuzzStop(){
+  if (holdOsc){
+    var t = actx.currentTime;
+    holdGain.gain.cancelScheduledValues(t);
+    holdGain.gain.setValueAtTime(holdGain.gain.value, t);
+    holdGain.gain.linearRampToValueAtTime(0, t + 0.03);
+    holdOsc.stop(t + 0.05);
+    holdOsc = null; holdGain = null;
+  }
+  clearTimeout(lampTimer);
+  el("buzzLamp").classList.remove("on");
+}
+
+/* ===================================================================
+   3. 設定値と試合状態
+   =================================================================== */
+/* 工場出荷時の初期設定値（取説 4-8 項） */
+function defaults(event){
+  return {
+    p1: 4*60,      // 試合時間
+    p2: 99*60+59,  // ゴールデンスコア時間（無制限＝99分59秒）
+    p3: 20,        // 抑え込み時間1（I：一本）
+    p4: 10,        // 抑え込み時間2（W：技あり）
+    p5: 5,         // 抑え込み時間3（Y：有効）
+    link: (event === 1),   // 柔道1＝連動／柔道2＝非連動
+    countDown: true,
+    buzzMode: 0,
+    colorIdx: 0,
+    event: event
+  };
+}
+var S = defaults(1);
+
+/* 選手カラー：OFF:OFF → 白:赤 → 赤:白 → 青:白 → 白:青 → OFF:OFF */
+var COLORS = [
+  {l:"", r:"", txt:"OFF : OFF"},
+  {l:"w", r:"r", txt:"白 : 赤"},
+  {l:"r", r:"w", txt:"赤 : 白"},
+  {l:"b", r:"w", txt:"青 : 白"},
+  {l:"w", r:"b", txt:"白 : 青"}
+];
+
+function newPlayer(){ return {i:0,w:0,y:0,s1:false,s2:false,s3:false,inj:0}; }
+
+var M = null;
+function newMatch(){
+  M = {
+    matchMs: S.p1*1000,   // 通常時＝残り時間 / GS・オーバータイム時＝経過時間
+    running: false,
+    gs: false,
+    over: false,          // 試合終了
+    overtime: false,      // 試合時間0だが抑え込み継続中（総試合時間表示）
+    endedAt: 0,           // 試合終了時刻（5秒以内の抑え込みSTART救済用）
+    graceOn: false,
+    osaeMs: 0,
+    osaeRun: false,
+    osaeActive: false,    // 表示盤「抑」点灯
+    osaeSide: null,       // "L" / "R"
+    osaeGrant: null,      // 連動時に抑え込みで与えているポイント "Y"/"W"/"I"/"AWASE"
+    L: newPlayer(), R: newPlayer(),
+    osaePausedWithMatch: false,  // 「待て」で試合と一緒に止めた抑え込み
+    hansoku: null,        // 反則を取った側
+    winner: null,
+    fix: false            // 訂正モード
+  };
+}
+newMatch();
+
+/* 設定モード：0=通常 / 1..5 = P1..P5 */
+var setMode = 0;
+
+/* ===================================================================
+   4. 描画
+   =================================================================== */
+function fmt2(n){ n = Math.max(0, Math.min(99, n)); return (n<10?"0":"") + n; }
+
+function displaySec(){
+  if (M.overtime) return S.p1 + Math.floor(M.matchMs/1000);      // 総試合時間（加算）
+  if (M.gs)       return Math.floor(M.matchMs/1000);             // GSは加算
+  if (!S.countDown) return S.p1 - Math.ceil(M.matchMs/1000);     // 加算設定
+  return Math.ceil(M.matchMs/1000);                              // 減算
+}
+
+function render(){
+  /* --- 試合時間 --- */
+  var sec, mm, ss;
+  if (setMode === 1)      sec = S.p1;
+  else if (setMode === 2) sec = S.p2;
+  else if (setMode >= 3)  sec = 0;
+  else                    sec = displaySec();
+  if (sec < 0) sec = 0; if (sec > 99*60+59) sec = 99*60+59;
+  mm = fmt2(Math.floor(sec/60)); ss = fmt2(sec%60);
+  if (setMode >= 3){
+    /* P3〜P5 設定中は試合時間部に 00:秒 を表示 */
+    var v = setMode===3 ? S.p3 : (setMode===4 ? S.p4 : S.p5);
+    mm = "00"; ss = fmt2(v);
+  }
+  setDigit(tD[0], mm.charAt(0)); setDigit(tD[1], mm.charAt(1));
+  setDigit(tD[2], ss.charAt(0)); setDigit(tD[3], ss.charAt(1));
+
+  /* --- 抑え込み時間 / 反則H --- */
+  if (M.hansoku){
+    setDigit(oD[0]," "); setDigit(oD[1],"H");
+    el("osaeDisp").classList.remove("green");
+  } else if (setMode >= 3){
+    var pv = fmt2(setMode===3 ? S.p3 : (setMode===4 ? S.p4 : S.p5));
+    setDigit(oD[0], pv.charAt(0)); setDigit(oD[1], pv.charAt(1));
+  } else {
+    var os = fmt2(Math.floor(M.osaeMs/1000));
+    if (!M.osaeActive && M.osaeMs === 0){ setDigit(oD[0]," "); setDigit(oD[1],"0"); }
+    else { setDigit(oD[0], os.charAt(0)); setDigit(oD[1], os.charAt(1)); }
+  }
+
+  /* --- ポイント --- */
+  ["L","R"].forEach(function(k){
+    var p = effective(k);
+    var d = pD[k];
+    if (p.i > 0) setDigit(d[0], String(p.i)); else { setDigit(d[0]," "); }
+    if (p.w > 0 || p.i > 0) setDigit(d[1], String(p.w)); else setDigit(d[1]," ");
+    setDigit(d[2], String(p.y));
+    el(k==="L"?"sL1":"sR1").classList.toggle("on", p.s1);
+    el(k==="L"?"sL2":"sR2").classList.toggle("on", p.s2);
+    var inj = el(k==="L"?"injL":"injR").children;
+    inj[0].classList.toggle("on", p.inj>=1);
+    inj[1].classList.toggle("on", p.inj>=2);
+  });
+
+  /* --- 選手カラー（抑え込み側は点滅） --- */
+  var c = COLORS[S.colorIdx];
+  el("colL").className = "colorbar " + c.l;
+  el("colR").className = "colorbar " + c.r;
+  el("colorTxt").textContent = c.txt;
+  if (M.osaeActive && M.osaeSide){
+    el(M.osaeSide==="L"?"colL":"colR").classList.add("win-blink");
+  }
+
+  /* --- 抑え込み / GS 表示 --- */
+  el("bdOsae").classList.toggle("on", M.osaeActive);
+  el("bdGs").classList.toggle("on", M.gs);
+
+  /* --- 勝者点滅 --- */
+  el("ptL").classList.toggle("win-blink", M.winner==="L");
+  el("ptR").classList.toggle("win-blink", M.winner==="R");
+  if (M.winner){
+    el(M.winner==="L"?"colL":"colR").classList.add("win-blink");
+  }
+
+  /* --- ステータス行 --- */
+  var st;
+  if (setMode > 0){
+    var names = ["","P1 試合時間","P2 GS時間","P3 抑え込み1(I)","P4 抑え込み2(W)","P5 抑え込み3(Y)"];
+    st = "<b>設定中</b> " + names[setMode] + "　（設定ボタンで次へ）";
+  } else {
+    st = "柔道" + S.event + "　P1 " + fmtMS(S.p1) + " / P2 " + fmtMS(S.p2)
+       + " / I " + S.p3 + "s W " + S.p4 + "s Y " + S.p5 + "s　"
+       + (S.link ? "<b>連動</b>" : "非連動")
+       + (M.gs ? "　<b>GS</b>" : "")
+       + (M.overtime ? "　<b>試合時間終了・抑え込み継続</b>" : "")
+       + (M.over ? "　<b>試合終了</b>" : "");
+  }
+  el("status").innerHTML = st;
+  el("linkTxt").textContent = S.link ? "連動" : "非連動";
+  el("kLink").classList.toggle("k-on", S.link);
+  el("kFix").classList.toggle("k-on", M.fix);
+  el("kSetting").classList.toggle("k-on", setMode>0);
+  el("kGs").classList.toggle("k-on", M.gs);
+  el("kSelect").firstChild.nodeValue = "柔道" + S.event;
+  el("kOsSideL").classList.toggle("k-on", M.osaeSide==="L");
+  el("kOsSideR").classList.toggle("k-on", M.osaeSide==="R");
+  el("kBuzzMode").firstChild.nodeValue = BUZZ_MODES[S.buzzMode].name;
+}
+function fmtMS(s){ return Math.floor(s/60) + ":" + fmt2(s%60); }
+
+/* 連動時に抑え込みで加算中のポイントを合成した「見た目の得点」 */
+function effective(side){
+  var p = M[side];
+  var o = {i:p.i, w:p.w, y:p.y, s1:p.s1, s2:p.s2, inj:p.inj};
+  if (S.link && M.osaeSide === side && M.osaeGrant){
+    if (M.osaeGrant === "Y") o.y = Math.min(9, o.y + 1);
+    else if (M.osaeGrant === "W") o.w = Math.min(2, o.w + 1);
+    else if (M.osaeGrant === "I") o.i = 1;
+    else if (M.osaeGrant === "AWASE"){ o.i = 1; o.w = Math.max(0, o.w - 1); } // 合わせ技一本
+  }
+  return o;
+}
+/* 抑え込みポイントを確定してベースの得点に反映する */
+function commitOsae(){
+  if (S.link && M.osaeSide && M.osaeGrant){
+    var e = effective(M.osaeSide), p = M[M.osaeSide];
+    p.i = e.i; p.w = e.w; p.y = e.y;
+  }
+  M.osaeGrant = null;
+}
+
+/* ===================================================================
+   5. 時間の進行
+   =================================================================== */
+var last = 0, raf = null;
+function tick(now){
+  raf = requestAnimationFrame(tick);
+  if (!last) last = now;
+  var dt = now - last; last = now;
+  if (dt > 1000) dt = 1000;   // タブ復帰時の飛びを抑える
+
+  if (M.running){
+    if (M.gs){
+      M.matchMs += dt;
+      if (M.matchMs >= S.p2*1000){ M.matchMs = S.p2*1000; endMatch(true); }
+    } else if (M.overtime){
+      M.matchMs += dt;          // 総試合時間の加算表示（ブザーは鳴らさない）
+    } else {
+      M.matchMs -= dt;
+      if (M.matchMs <= 0){
+        M.matchMs = 0;
+        if (M.osaeRun){
+          /* 抑え込み継続中は試合終了せず、総試合時間表示へ切り替え */
+          M.overtime = true;
+        } else {
+          endMatch(true);
+        }
+      }
+    }
+  }
+  if (M.osaeRun){
+    M.osaeMs += dt;
+    evalOsae();
+  }
+  /* 試合終了5秒以内の抑え込みSTART救済 */
+  if (M.graceOn && Date.now() - M.endedAt > 5000) M.graceOn = false;
+
+  render();
+}
+requestAnimationFrame(tick);
+
+/* 抑え込み時間からポイント／終了を判定 */
+function evalOsae(){
+  var sec = M.osaeMs / 1000;
+  var side = M.osaeSide;
+
+  /* ゴールデンスコア中は P3・P4・P5 のうち最も短い時間で試合終了 */
+  if (M.gs){
+    var gmin = Math.min(S.p3, S.p4, S.p5);
+    if (sec >= gmin){
+      M.osaeMs = gmin*1000;
+      if (S.link && side){
+        M.osaeGrant = (gmin===S.p3) ? "I" : (gmin===S.p4 ? "W" : "Y");
+      }
+      stopOsae();
+      endMatch(true);
+    }
+    return;
+  }
+
+  if (!S.link){
+    /* 非連動：一本の時間で自動停止（ブザー）。ポイントは手動 */
+    if (sec >= S.p3){
+      M.osaeMs = S.p3*1000;
+      stopOsae();
+      endMatch(true);
+    }
+    return;
+  }
+
+  /* 連動：P5→有効、P4→技あり（技あり保持者は合わせ技一本）、P3→一本 */
+  var g = grantFor(sec, side);
+  if (g !== M.osaeGrant) M.osaeGrant = g;
+  if (g === "I" || g === "AWASE"){
+    M.osaeMs = Math.min(M.osaeMs, (g==="AWASE" ? S.p4 : S.p3) * 1000);
+    stopOsae();
+    endMatch(true);
+  }
+}
+function grantFor(sec, side){
+  if (!side) return null;
+  var p = M[side];
+  if (sec >= S.p3) return "I";
+  if (sec >= S.p4) return (p.w >= 1) ? "AWASE" : "W";   // 技あり保持なら合わせ技一本
+  if (sec >= S.p5) return "Y";
+  return null;
+}
+
+function endMatch(withBuzzer){
+  if (M.over) return;
+  M.over = true;
+  M.running = false;
+  /* overtime（総試合時間表示）は終了後もそのまま表示を残す */
+  M.endedAt = Date.now();
+  M.graceOn = true;
+  if (withBuzzer) ringBuzzer(BUZZ_SEC);   // 試合時間終了／抑え込み一本 ＝ 2.5秒
+}
+function stopOsae(){ M.osaeRun = false; }
+
+/* ===================================================================
+   6. 操作
+   =================================================================== */
+function press(id, fn){
+  var b = el(id);
+  b.addEventListener("click", function(){ initAudio(); fn(); render(); });
+}
+
+/* ---- 試合時間部 ---- */
+press("kStart", function(){
+  if (setMode > 0){ S.countDown = !S.countDown; return; }  // 設定中はUP/DOWN切替
+  if (M.over) return;
+  /* 試合開始・「待て」からの再開ともにブザーは鳴らさない */
+  M.running = !M.running;
+  if (M.running){
+    requestWake();
+    /* 「そのまま」＝抑え込み中に止めた場合、再開で抑え込みも連動再スタート */
+    if (M.osaeActive && M.osaePausedWithMatch){ M.osaeRun = true; M.osaePausedWithMatch = false; }
+  } else {
+    /* 「待て」＝抑え込み中なら抑え込みも連動してストップ */
+    if (M.osaeRun){ M.osaeRun = false; M.osaePausedWithMatch = true; }
+    releaseWake();
+  }
+});
+function adjMatch(delta){
+  if (setMode === 1){ S.p1 = clamp(S.p1 + delta, 0, 99*60+59); return; }
+  if (setMode === 2){ S.p2 = clamp(S.p2 + delta, 0, 99*60+59); return; }
+  if (setMode >= 3){ adjOsaeSetting(delta > 0 ? 1 : -1); return; }
+  if (M.running) return;                       // 停止中のみ訂正可
+  if (M.gs || M.overtime) M.matchMs = clamp(M.matchMs + delta*1000, 0, (99*60+59)*1000);
+  else M.matchMs = clamp(M.matchMs + delta*1000, 0, (99*60+59)*1000);
+}
+press("kMinUp", function(){ adjMatch(60); });
+press("kMinDn", function(){ adjMatch(-60); });
+press("kSecUp", function(){ adjMatch(1); });
+press("kSecDn", function(){ adjMatch(-1); });
+
+press("kGs", function(){
+  if (setMode > 0) return;
+  if (M.gs){
+    M.gs = false; M.matchMs = S.p1*1000;
+  } else {
+    M.gs = true; M.over = false; M.overtime = false; M.matchMs = 0; M.running = false;
+  }
+});
+
+/* ---- 抑え込み時間部 ---- */
+press("kOsStart", function(){
+  if (setMode > 0) return;
+  if (M.osaeRun){ M.osaeRun = false; return; }
+
+  /* 試合終了5秒以内なら「試合終了と同時に抑え込み開始」とみなす */
+  if (M.over && M.graceOn){
+    var elapsed = Date.now() - M.endedAt;
+    M.over = false; M.graceOn = false;
+    M.overtime = true; M.matchMs = elapsed; M.running = true;
+    M.osaeMs = elapsed;
+  }
+  if (M.over) return;
+  M.osaeActive = true;
+  M.osaeRun = true;
+  M.osaePausedWithMatch = false;
+  if (!M.running && !M.overtime && !M.gs) M.running = true;  // 抑え込み開始＝試合続行中
+  requestWake();
+});
+press("kOsReset", function(){          // RESET & START（解けてすぐ抑え込み）
+  if (setMode > 0) return;
+  if (M.over) return;
+  commitOsae();
+  M.osaeMs = 0; M.osaeActive = true; M.osaeRun = true; M.osaePausedWithMatch = false;
+});
+press("kOsClear", function(){          // 抑え込みリセット（解除）
+  if (setMode > 0) return;
+  commitOsae();
+  M.osaeRun = false; M.osaeMs = 0; M.osaeActive = false;
+  /* 試合時間終了後の抑え込みは、解けた時点で試合終了（ブザー） */
+  if (M.overtime){ endMatch(true); }
+});
+function adjOsaeSetting(d){
+  if (setMode === 3) S.p3 = clamp(S.p3 + d, 0, 99);
+  else if (setMode === 4) S.p4 = clamp(S.p4 + d, 0, 99);
+  else if (setMode === 5) S.p5 = clamp(S.p5 + d, 0, 99);
+}
+function adjOsae(d){
+  if (setMode >= 3){ adjOsaeSetting(d); return; }
+  if (setMode > 0) return;
+  if (M.osaeRun) return;                       // 停止中のみ訂正可
+  M.osaeMs = clamp(M.osaeMs + d*1000, 0, 99000);
+  /* 連動時は時間の訂正に合わせてポイントも自動訂正 */
+  if (S.link && M.osaeSide){
+    var g = grantFor(M.osaeMs/1000, M.osaeSide);
+    M.osaeGrant = (g === "AWASE" || g === "I") ? g : g;
+  }
+}
+press("kOsSecUp", function(){ adjOsae(1); });
+press("kOsSecDn", function(){ adjOsae(-1); });
+press("kOsSideL", function(){ M.osaeSide = (M.osaeSide==="L") ? null : "L"; });
+press("kOsSideR", function(){ M.osaeSide = (M.osaeSide==="R") ? null : "R"; });
+press("kLink", function(){ S.link = !S.link; if (!S.link){ commitOsae(); } });
+
+/* ---- ポイント部 ---- */
+function pointPress(side, key){
+  var p = M[side];
+  var minus = M.fix;
+  M.fix = false;
+  if (key === "y"){
+    p.y = minus ? Math.max(0, p.y-1) : (p.y >= 9 ? 0 : p.y+1);
+  } else if (key === "w"){
+    p.w = minus ? Math.max(0, p.w-1) : (p.w >= 2 ? 0 : p.w+1);
+  } else if (key === "i"){
+    p.i = minus ? 0 : (p.i ? 0 : 1);
+    if (p.i === 1) endMatch(false);            // 一本＝試合終了（ブザーは鳴らさない）
+  } else if (key === "s1"){
+    p.s1 = minus ? false : !p.s1;
+  } else if (key === "s2"){
+    p.s2 = minus ? false : !p.s2;
+  } else if (key === "s3"){                    // 反則＝相手に一本、表示部に「H」
+    if (minus || p.s3){
+      p.s3 = false; M.hansoku = null;
+      M[side==="L"?"R":"L"].i = 0;
+    } else {
+      p.s3 = true; M.hansoku = side;
+      M[side==="L"?"R":"L"].i = 1;
+      endMatch(false);
+    }
+  }
+}
+Array.prototype.forEach.call(document.querySelectorAll("[data-p]"), function(b){
+  b.addEventListener("click", function(){
+    initAudio();
+    if (setMode > 0) return;
+    var a = b.getAttribute("data-p").split(",");
+    pointPress(a[0], a[1]);
+    render();
+  });
+});
+press("kFix", function(){ M.fix = !M.fix; });
+press("kInjL", function(){ M.L.inj = M.fix ? Math.max(0,M.L.inj-1) : (M.L.inj>=2?0:M.L.inj+1); M.fix=false; });
+press("kInjR", function(){ M.R.inj = M.fix ? Math.max(0,M.R.inj-1) : (M.R.inj>=2?0:M.R.inj+1); M.fix=false; });
+press("kWinL", function(){ M.winner = (M.winner==="L") ? null : "L"; });
+press("kWinR", function(){ M.winner = (M.winner==="R") ? null : "R"; });
+press("kColor", function(){ S.colorIdx = (S.colorIdx + 1) % COLORS.length; });
+
+/* ---- 上部バー ---- */
+press("kSelect", function(){
+  if (setMode > 0) return;
+  S = defaults(S.event === 1 ? 2 : 1);
+  newMatch();
+});
+press("kSetting", function(){
+  setMode = (setMode >= 5) ? 0 : setMode + 1;
+  if (setMode === 1){ M.running = false; M.osaeRun = false; }
+  if (setMode === 0){ newMatch(); }            // 設定確定→試合モードへ
+});
+press("kGameReset", function(){
+  if (setMode > 0) return;
+  newMatch();
+  releaseWake();
+});
+press("kFull", function(){
+  var d = document.documentElement;
+  if (!document.fullscreenElement){ (d.requestFullscreen||d.webkitRequestFullscreen||function(){}).call(d); }
+  else { (document.exitFullscreen||document.webkitExitFullscreen||function(){}).call(document); }
+});
+press("kBuzzMode", function(){ S.buzzMode = (S.buzzMode + 1) % BUZZ_MODES.length; });
+press("kHelp", function(){ el("help").classList.add("show"); });
+press("kHelpClose", function(){ el("help").classList.remove("show"); });
+
+/* ブザーボタン：押している間だけ鳴る */
+(function(){
+  var b = el("kBuzz");
+  b.addEventListener("pointerdown", function(e){ e.preventDefault(); holdBuzzStart(); });
+  ["pointerup","pointercancel","pointerleave"].forEach(function(ev){
+    b.addEventListener(ev, holdBuzzStop);
+  });
+})();
+
+/* 設定クリア：2秒長押しで初期設定に戻す */
+(function(){
+  var b = el("kClear"), t = null;
+  b.addEventListener("pointerdown", function(){
+    t = setTimeout(function(){
+      var ev = S.event; S = defaults(ev); newMatch(); setMode = 0; render();
+    }, 2000);
+  });
+  ["pointerup","pointercancel","pointerleave"].forEach(function(ev){
+    b.addEventListener(ev, function(){ clearTimeout(t); });
+  });
+})();
+
+/* ±ボタンの長押しリピート */
+(function(){
+  var ids = ["kMinUp","kMinDn","kSecUp","kSecDn","kOsSecUp","kOsSecDn"];
+  ids.forEach(function(id){
+    var b = el(id), t1 = null, t2 = null;
+    function stop(){ clearTimeout(t1); clearInterval(t2); }
+    b.addEventListener("pointerdown", function(){
+      t1 = setTimeout(function(){
+        t2 = setInterval(function(){ b.click(); }, 90);
+      }, 450);
+    });
+    ["pointerup","pointercancel","pointerleave"].forEach(function(ev){ b.addEventListener(ev, stop); });
+  });
+})();
+
+/* 押し込み演出 */
+(function(){
+  function down(e){ e.currentTarget.classList.add("press"); }
+  function up(e){ e.currentTarget.classList.remove("press"); }
+  Array.prototype.forEach.call(document.querySelectorAll("button"), function(b){
+    b.addEventListener("pointerdown", down);
+    ["pointerup","pointercancel","pointerleave"].forEach(function(ev){ b.addEventListener(ev, up); });
+  });
+})();
+
+function clamp(v,a,b){ return v<a?a:(v>b?b:v); }
+
+/* ===================================================================
+   7. 画面スリープ防止
+   =================================================================== */
+var wakeLock = null;
+function requestWake(){
+  if (!("wakeLock" in navigator) || wakeLock) return;
+  try{ navigator.wakeLock.request("screen").then(function(w){ wakeLock = w; }, function(){}); }catch(e){}
+}
+function releaseWake(){
+  if (wakeLock){ try{ wakeLock.release(); }catch(e){} wakeLock = null; }
+}
+document.addEventListener("visibilitychange", function(){
+  if (document.visibilityState === "visible" && (M.running || M.osaeRun)) requestWake();
+});
+window.addEventListener("touchstart", initAudio, { once:true });
+window.addEventListener("mousedown", initAudio, { once:true });
+
+render();
+</script>
+</body>
+</html>
