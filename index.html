@@ -469,6 +469,16 @@ button:disabled{opacity:.35;}
 }
 #help b{color:var(--ink);}
 #help .close{margin-top:22px;padding:11px 20px;font-size:14px;}
+button[hidden]{display:none !important;}
+/* 撮影の結果を知らせる小さな帯（数秒で消える） */
+#shotToast{
+  position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom) + 18px);z-index:999;
+  transform:translate(-50%,20px);opacity:0;pointer-events:none;
+  background:rgba(20,24,32,.94);color:#fff;border:1px solid #3b4656;border-radius:10px;
+  padding:10px 18px;font-size:15px;font-weight:700;white-space:nowrap;
+  transition:opacity .2s,transform .2s;
+}
+#shotToast.on{opacity:1;transform:translate(-50%,0);}
 </style>
 </head>
 <body>
@@ -538,6 +548,7 @@ button:disabled{opacity:.35;}
       <button class="tb k-gray" id="kBuzzMode">大・連続<small>音切替</small></button>
       <button class="tb k-gray" id="kUi">タブレット<small id="uiSub">表示モード</small></button>
       <button class="tb k-gray" id="kFull">全画面</button>
+      <button class="tb k-gray" id="kShot" hidden>撮影<small>画面を保存</small></button>
       <button class="tb k-gray" id="kHelp">説明</button>
       <div id="status"></div>
     </div>
@@ -609,6 +620,8 @@ button:disabled{opacity:.35;}
   </div>
 </div>
 
+<div id="shotToast"></div>
+
 <div id="help"><div class="inner">
   <h2>柔道試合タイマー（JT-801 相当）操作メモ</h2>
 
@@ -616,6 +629,11 @@ button:disabled{opacity:.35;}
   ・<b>横向き・縦向きのどちらでも操作できます。</b>横向きは「試合時間／ポイント／抑え込み」の3列、縦向きはポイント部が上段、試合時間部・抑え込み時間部が下段になります。<br>
   ・「表示モード」ボタンで <b>自動 → モバイル → タブレット</b> を切り替えます（自動は画面サイズで判定。選んだモードは次回も保持されます）。<br>
   ・画面に収まらないときは<b>下にスクロール</b>してポイント部などを操作できます。スクロールしても<b>表示盤は画面上部に固定</b>されるので、時計を見ながら操作できます。
+
+  <h3>撮影（PCのみ）</h3>
+  ・<b>撮影</b>：今の画面をそのまま画像（PNG）にして、ダウンロードフォルダに保存します。<br>
+  ・最初に「共有する画面を選ぶ」画面が出るので、<b>「このタブ」</b>を選んで「共有」を押します。撮り終わると共有は自動で止まります。<br>
+  ・画面共有に対応していないスマートフォン・iPad ではボタンが出ません。
 
   <h3>ブザー</h3>
   ・<b>試合開始・「待て」からの再開ではブザーは鳴りません。</b><br>
@@ -1512,6 +1530,64 @@ press("kFull", function(){
   else { (document.exitFullscreen||document.webkitExitFullscreen||function(){}).call(document); }
 });
 press("kBuzzMode", function(){ S.buzzMode = (S.buzzMode + 1) % BUZZ_MODES.length; });
+/* ===================================================================
+   画面の撮影（PCのブラウザ向け）
+   ブラウザの画面共有の仕組みで「このタブ」の見た目をそのまま1枚撮り、
+   PNG としてダウンロードする。画像は端末の外へは一切送らない。
+   画面共有に対応していない端末（スマホ・iPad など）ではボタンを出さない。
+   =================================================================== */
+var shotBusy = false;
+function canShot(){ return !!(navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia); }
+function shotToast(msg){
+  var t = el("shotToast");
+  t.textContent = msg; t.classList.add("on");
+  clearTimeout(shotToast.tm);
+  shotToast.tm = setTimeout(function(){ t.classList.remove("on"); }, 2600);
+}
+function shotName(){
+  var d = new Date();
+  function p(n){ return (n < 10 ? "0" : "") + n; }
+  return d.getFullYear() + p(d.getMonth()+1) + p(d.getDate()) + "_試合タイマー_" +
+         p(d.getHours()) + p(d.getMinutes()) + p(d.getSeconds()) + ".png";
+}
+function takeShot(){
+  if (shotBusy) return;                      /* 連打しても1回だけ */
+  if (!canShot()){ shotToast("この端末では撮影できません"); return; }
+  shotBusy = true;
+  var stream = null;
+  function stop(){ if (stream){ stream.getTracks().forEach(function(t){ t.stop(); }); stream = null; } }
+  navigator.mediaDevices.getDisplayMedia({
+    video:{ displaySurface:"browser" }, audio:false,
+    preferCurrentTab:true, selfBrowserSurface:"include", surfaceSwitching:"exclude"
+  }).then(function(s){
+    stream = s;
+    var v = document.createElement("video");
+    v.muted = true; v.playsInline = true; v.srcObject = s;
+    return v.play().then(function(){
+      /* 選択画面が消えて、画面が描き直されるのを少し待ってから撮る */
+      return new Promise(function(ok){ setTimeout(ok, 600); });
+    }).then(function(){
+      var c = document.createElement("canvas");
+      c.width = v.videoWidth; c.height = v.videoHeight;
+      if (!c.width || !c.height) throw new Error("empty");
+      c.getContext("2d").drawImage(v, 0, 0);
+      stop();
+      return new Promise(function(ok, ng){
+        c.toBlob(function(b){ b ? ok(b) : ng(new Error("blob")); }, "image/png");
+      });
+    });
+  }).then(function(blob){
+    var a = document.createElement("a"), url = URL.createObjectURL(blob);
+    a.href = url; a.download = shotName();
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
+    shotToast("撮影しました（ダウンロードに保存）");
+  }).catch(function(e){
+    shotToast(e && e.name === "NotAllowedError" ? "撮影をやめました" : "撮影できませんでした");
+  }).then(function(){ stop(); shotBusy = false; });
+}
+if (canShot()) el("kShot").hidden = false;
+press("kShot", takeShot);
 press("kHelp", function(){ el("help").classList.add("show"); });
 press("kHelpClose", function(){ el("help").classList.remove("show"); });
 
